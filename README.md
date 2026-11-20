@@ -123,7 +123,8 @@ which preset first switches a feature on; `Toggle` means none does, it's yours t
 - (Nearly) every button rebindable, with a full keyboard & mouse layout and save states (F5 / F9; Select / Select + Start).
 
 **Display & Graphics**
-- Fullscreen (borderless), maximized or windowed; any aspect ratio from 4:3 to 32:9.
+- Fullscreen (borderless), maximized or windowed; any aspect ratio from 4:3 to 32:9. On Apple Silicon, macOS Game Mode
+  activates while the game is frontmost and fullscreen.
 - Internal resolution up to 8x. Apple Silicon uses bundled KosmicKrisp Vulkan; Windows uses Vulkan by default with
   Direct3D 11 as the fallback.
 - Texture filtering from the PS2's own smoothing to Dangerously Crunchy, plus trilinear, anisotropic, FXAA,
@@ -221,7 +222,7 @@ Every option, with the same help text you'll see in the launcher and in game.
 
 **Game Window**
 
-- **Display Mode:** Window, max window, or borderless fullscreen. You can also use F11, if you're into that. *Fullscreen (Borderless) / Maximized Window / Window*
+- **Display Mode:** Window, max window, or borderless fullscreen. On Apple Silicon, macOS Game Mode activates while the game is frontmost and fullscreen. You can also use F11, if you're into that. *Fullscreen (Borderless) / Maximized Window / Window*
   - **Window Size:** The window's size when it opens (not maximized or fullscreen). *Automatic (follows internal resolution) / PS2 size*
 - **Aspect Ratio:** Screen width from 4:3 to wider than yo momma! *4:3 (the PS2's) / 16:9 / 16:10 / 21:9 / 32:9 / Match the screen* `Remastered+`
 - **VSync:** On: no screen tearing. Off: for G-Sync | FreeSync. The rest get torn up. *On / Off*

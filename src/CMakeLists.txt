@@ -346,6 +346,24 @@ if(WIN32)
     target_sources(kamite PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/kamite/ghr.rc")
     set_source_files_properties("${CMAKE_CURRENT_SOURCE_DIR}/kamite/ghr.rc" PROPERTIES
         OBJECT_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/kamite/ghr.ico")
+elseif(APPLE)
+    # The flat executable remains the headless/test entry point. Its metadata also goes in a tiny app launcher used for
+    # normal play: LaunchServices then recognizes the process as a game, while the launcher execs this same executable
+    # so settings, resources and libraries keep their existing paths next to GHR.
+    set(KAMITE_MACOS_INFO_PLIST "${CMAKE_CURRENT_SOURCE_DIR}/kamite/macos_info.plist")
+    target_link_options(kamite PRIVATE
+        "LINKER:-sectcreate,__TEXT,__info_plist,${KAMITE_MACOS_INFO_PLIST}")
+    set_property(TARGET kamite APPEND PROPERTY LINK_DEPENDS "${KAMITE_MACOS_INFO_PLIST}")
+    add_executable(kamite_app MACOSX_BUNDLE kamite/macos_launcher.cpp)
+    set_target_properties(kamite_app PROPERTIES
+        OUTPUT_NAME GHR
+        MACOSX_BUNDLE_INFO_PLIST "${KAMITE_MACOS_INFO_PLIST}"
+        RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin")
+    add_custom_target(kamite_app_sign
+        COMMAND /usr/bin/codesign --force --sign - "$<TARGET_BUNDLE_DIR:kamite_app>"
+        DEPENDS kamite_app
+        VERBATIM)
+    add_dependencies(kamite kamite_app_sign)
 endif()
 # The checkout's commit for the test cases' meta (kamite_generated/kamite/git_commit.h), refreshed at every build.
 set(KAMITE_COMMIT_HEADER "${CMAKE_CURRENT_BINARY_DIR}/kamite_generated/kamite/git_commit.h")

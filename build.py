@@ -30,6 +30,7 @@ import shutil
 import struct
 import subprocess
 import sys
+import tempfile
 import time
 from pathlib import Path
 
@@ -39,6 +40,7 @@ BIN = BUILD / "bin"
 WINDOWS = os.name == "nt"
 EXECUTABLE_SUFFIX = ".exe" if WINDOWS else ""
 EXE = BIN / f"GHR{EXECUTABLE_SUFFIX}"
+MACOS_APP = BIN / "GHR.app"
 RECOMPILER_NAME = f"ps2_recomp{EXECUTABLE_SUFFIX}"
 VU1_RECOMP_NAME = f"vu1_recomp{EXECUTABLE_SUFFIX}"
 VSENV = ROOT / "tools" / "win" / "vsenv.cmd"
@@ -693,7 +695,7 @@ def with_disc_arg(args):
 
 
 def play(args=()):
-    if not EXE.exists():
+    if not EXE.exists() or (sys.platform == "darwin" and not MACOS_APP.exists()):
         print(f"{EXE.name} not built yet: run 'python -I build.py build' first.")
         return 1
     args = with_disc_arg(args)
@@ -701,8 +703,37 @@ def play(args=()):
     digest = hashlib.sha256(EXE.read_bytes()).hexdigest()
     print(f"[session] start {time.strftime('%Y-%m-%d %H:%M:%S %z')} exe {EXE.name} sha256 {digest}", flush=True)
     # --time-limit 0: a normal run is not capped (the ini default TimeLimitSeconds is for hidden boots).
-    code = run([EXE, "--window", "--time-limit", "0", *args], cwd=BIN)
+    game_args = ["--window", "--time-limit", "0", *args]
+    app_log = None
+    temporary_log = None
+    if sys.platform == "darwin":
+        keep_play_log()
+        app_log = BIN / "logs" / "play_last.log"
+        app_log.parent.mkdir(parents=True, exist_ok=True)
+        descriptor, path = tempfile.mkstemp(prefix="ghr-play-", suffix=".log")
+        os.close(descriptor)
+        temporary_log = Path(path)
+        command = ["/usr/bin/open", "-n", "-W", "--stdout", temporary_log]
+        for name, value in os.environ.items():
+            if name.startswith(("KAMITE_", "PS2X_", "VK_")) or name in {"LIBVULKAN_PATH", "LIBSHADERC_PATH"}:
+                command += ["--env", f"{name}={value}"]
+        command += [MACOS_APP, "--args", *game_args]
+    else:
+        command = [EXE, *game_args]
+    code = 1
+    try:
+        code = run(command, cwd=BIN)
+    finally:
+        if temporary_log:
+            try:
+                shutil.move(temporary_log, app_log)
+            except OSError as error:
+                print(f"could not keep the app output in {app_log}: {error}")
+                if code == 0:
+                    code = 1
     print(f"[session] end {time.strftime('%Y-%m-%d %H:%M:%S %z')} exit {code}", flush=True)
+    if app_log:
+        print(f"log: {app_log}")
     return code
 
 
@@ -826,6 +857,8 @@ def status(args=()):
     ]
     if WINDOWS:
         rows.append(("tools/win/vsenv.cmd", VSENV))
+    elif sys.platform == "darwin":
+        rows.append(("GHR.app", MACOS_APP))
     for label, path in rows:
         print(f"  [{'x' if Path(path).exists() else ' '}] {label}: {path}")
     if WINDOWS:

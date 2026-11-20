@@ -236,7 +236,8 @@ namespace kamite::settings
 
         // ---- Display --------------------------------------------------------------------------------------------
         live(withChoices(custom("DisplayMode", Tab::Display, "Game Window", "Display Mode",
-                                "Window, max window, or borderless fullscreen.\nYou can also use F11, if you're into that."),
+                                "Window, max window, or borderless fullscreen. On Apple Silicon, macOS Game Mode activates "
+                                "while the game is frontmost and fullscreen.\nYou can also use F11, if you're into that."),
                          kDisplayModes, static_cast<int>(std::size(kDisplayModes)), "fullscreen")),
         greyed(sub(choice(Tab::Display, "Game Window", "Window Size",
                           "The window's size when it opens (not maximized or fullscreen).", "Video", "WindowSize", "auto",

@@ -634,7 +634,7 @@
     {
       "id": "DisplayMode",
       "label": "Display Mode",
-      "help": "Window, max window, or borderless fullscreen. You can also use F11, if you're into that.",
+      "help": "Window, max window, or borderless fullscreen. On Apple Silicon, macOS Game Mode activates while the game is frontmost and fullscreen. You can also use F11, if you're into that.",
       "group": "Game Window",
       "choices": [
         {

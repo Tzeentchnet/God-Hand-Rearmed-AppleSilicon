@@ -77,10 +77,12 @@ On Apple Silicon, run:
 python3 -I build.py run
 ```
 
-`build.py` supplies the first matching ISO in `game/`. The experimental macOS build uses PCSX2 Vulkan through its
-bundled KosmicKrisp driver; Direct3D 11 is Windows-only. It currently disables the launcher, SDL controller input, and
-the saloon UI, and uses GLFW controller support. These limitations do not affect the recompiled game, SNR2 modules,
-saves, keyboard input, HD replacement textures, or audio.
+`build.py` supplies the first matching ISO in `game/` and launches `build/port/bin/GHR.app`; the app hands off to the
+flat `GHR` executable beside it so all settings and resources stay in their existing locations. The experimental macOS
+build uses PCSX2 Vulkan through its bundled KosmicKrisp driver; Direct3D 11 is Windows-only. It currently disables the
+launcher, SDL controller input, and the saloon UI, and uses GLFW controller support. These limitations do not affect
+the recompiled game, SNR2 modules, saves, keyboard input, HD replacement textures, or audio. The app declares Game Mode
+support; macOS activates it while the game is frontmost and fullscreen and disables it after returning to a window.
 
 The very first start can sit on a black screen for a couple of minutes while graphics are prepared; later starts take
 seconds.
