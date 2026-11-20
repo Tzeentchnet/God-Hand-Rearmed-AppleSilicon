@@ -90,8 +90,7 @@
 #include <string_view>
 #include <thread>
 #include <vector>
-#include <xmmintrin.h>
-#include <pmmintrin.h>
+#include "ps2_simd.h"
 
 #if defined(_WIN32)
 #define NOMINMAX

@@ -7,7 +7,7 @@
     python -I build.py vu [capture dir ...]           VU1 microcode ahead of time: the uploads found on your disc plus
                                                       captured images (vu1_*.bin) into generated/vu1
     python -I build.py configure [-DOPTION=...]       CMake configure (Ninja, RelWithDebInfo, no LTCG)
-    python -I build.py build [target]                 compile GHR.exe (configures first if needed)
+    python -I build.py build [target]                 compile GHR (GHR.exe on Windows; configures first if needed)
     python -I build.py all [--iso X]                  generate -> configure -> build
     python -I build.py characters [--iso X] [--texture-pack D] [id ...]  the Python build of the playable characters
                                                       (assets/characters) into build/port/bin/mods/characters (D: the HD
@@ -15,11 +15,12 @@
                                                       boot (src/kamite/builtin_characters.h) and ignores that folder; a
                                                       check of the C++ build (the same bytes)
     python -I build.py boot [--seconds N] [--iso X]   one hidden, time-capped run; output in build/port/bin/logs
-    python -I build.py run [args]                     a normal run in a window (arguments go to GHR.exe)
+    python -I build.py run [args]                     a normal run in a window (arguments go to GHR)
     python -I build.py status                         what exists so far
 
-Needs Python 3.10+, Visual Studio 2022 with C++ (cl, CMake and Ninja come with it; VSROOT if it is not in the default
-folder; tools/win/vsenv.cmd sets it up) and your own disc image (USA, SLUS-21503) in game/ (or KAMITE_ISO / --iso).
+Needs Python 3.10+, CMake, Ninja and your own disc image (USA, SLUS-21503) in game/ (or KAMITE_ISO / --iso).
+Windows uses Visual Studio 2022 with C++ (VSROOT when it is not in the default folder; tools/win/vsenv.cmd sets it up).
+macOS uses Xcode's command-line tools and builds a native Apple Silicon executable.
 Adapted from the Urban Reign port's build.py and tools/generate.py (one file here; no menu, release or bench).
 """
 import hashlib
@@ -35,7 +36,11 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent
 BUILD = ROOT / "build" / "port"
 BIN = BUILD / "bin"
-EXE = BIN / "GHR.exe"
+WINDOWS = os.name == "nt"
+EXECUTABLE_SUFFIX = ".exe" if WINDOWS else ""
+EXE = BIN / f"GHR{EXECUTABLE_SUFFIX}"
+RECOMPILER_NAME = f"ps2_recomp{EXECUTABLE_SUFFIX}"
+VU1_RECOMP_NAME = f"vu1_recomp{EXECUTABLE_SUFFIX}"
 VSENV = ROOT / "tools" / "win" / "vsenv.cmd"
 JOBS = os.environ.get("KAMITE_JOBS", str(os.cpu_count() or 8))
 GENERATED = ROOT / "generated"
@@ -51,7 +56,7 @@ EXIT_CODES = {
     1: "initialisation failed or fatal exception",
     2: "no disc image found",
     3: "wrong disc or boot ELF hash mismatch",
-    4: "CPU lacks SSE4.1/AVX2",
+    4: "CPU lacks required SIMD features",
     5: "stopped on a missing function (MissingFunction=stop)",
     6: "crashed (unhandled exception or fatal signal; see the [crash] lines)",
     124: "time limit reached",
@@ -75,13 +80,16 @@ def recomp_env():
 
 def run(cmd, **kwargs):
     print("+", " ".join(str(c) for c in cmd), flush=True)
-    kwargs["creationflags"] = kwargs.get("creationflags", 0) | LOW_PRIORITY
+    if LOW_PRIORITY:
+        kwargs["creationflags"] = kwargs.get("creationflags", 0) | LOW_PRIORITY
     return subprocess.run([str(c) for c in cmd], **kwargs).returncode
 
 
 def find_vsroot():
     """VSROOT for tools/win/vsenv.cmd, whose default is ...\\2022\\Community. This PC has only the 2022 Build Tools in
     Program Files (x86), so look: VSROOT, then vswhere, then the usual folders."""
+    if not WINDOWS:
+        return None
     if os.environ.get("VSROOT"):
         return os.environ["VSROOT"]
     vswhere = Path(os.environ.get("ProgramFiles(x86)", r"C:\Program Files (x86)")) / "Microsoft Visual Studio" / "Installer" / "vswhere.exe"
@@ -107,7 +115,9 @@ def vs_command(*cmd):
 
 
 def in_vs(*cmd):
-    """Runs a command inside the Visual Studio x64 environment (tools/win/vsenv.cmd)."""
+    """Runs a command in the native toolchain, adding Visual Studio's x64 environment on Windows."""
+    if not WINDOWS:
+        return run(cmd)
     if not VSENV.exists():
         print(f"{VSENV} is missing (copy tools/win/vsenv.cmd from the Urban Reign port).")
         return 1
@@ -121,7 +131,7 @@ def in_vs(*cmd):
 
 
 def game_running():
-    if os.name != "nt":
+    if not WINDOWS:
         return False
     out = subprocess.run(["tasklist", "/FI", "IMAGENAME eq GHR.exe", "/NH"], capture_output=True, text=True).stdout
     return "ghr.exe" in out.lower()
@@ -197,10 +207,10 @@ def find_recompiler():
     """KAMITE_RECOMP, then the recompiler built from runtime/ps2xRecomp into out/recomp, then the port build tree."""
     candidates = []
     if os.environ.get("KAMITE_RECOMP"):
-        candidates.append(Path(os.environ["KAMITE_RECOMP"]))
-    candidates += [ROOT / "out" / "recomp" / "ps2_recomp.exe",
-                   BUILD / "runtime" / "ps2xRecomp" / "ps2_recomp.exe",
-                   ROOT / "tools" / "ps2_recomp.exe"]
+        candidates.append(Path(os.environ["KAMITE_RECOMP"]).expanduser().resolve())
+    candidates += [ROOT / "out" / "recomp" / RECOMPILER_NAME,
+                   BUILD / "runtime" / "ps2xRecomp" / RECOMPILER_NAME,
+                   ROOT / "tools" / RECOMPILER_NAME]
     for candidate in candidates:
         if candidate.exists():
             return candidate
@@ -270,7 +280,7 @@ def generate(args=()):
     recompiler = find_recompiler()
     # The recompiler built here is rebuilt when its sources changed (switchable patches, fixes), so the game code is
     # always generated by the current one. KAMITE_RECOMP or out/recomp: taken as they are.
-    built_here = BUILD / "runtime" / "ps2xRecomp" / "ps2_recomp.exe"
+    built_here = BUILD / "runtime" / "ps2xRecomp" / RECOMPILER_NAME
     if recompiler and Path(recompiler) == built_here and not os.environ.get("KAMITE_RECOMP"):
         newest = max(f.stat().st_mtime for f in (ROOT / "runtime" / "ps2xRecomp").rglob("*") if f.is_file())
         if newest > built_here.stat().st_mtime:
@@ -282,7 +292,7 @@ def generate(args=()):
             return 1
         recompiler = find_recompiler()
         if not recompiler:
-            print("ps2_recomp.exe still not found after building it.")
+            print(f"{RECOMPILER_NAME} still not found after building it.")
             return 1
     staging = ROOT / "build" / "generated_staging"
     shutil.rmtree(staging, ignore_errors=True)
@@ -497,7 +507,7 @@ def modules(args=()):
         return 1
     recompiler = find_recompiler()
     if not recompiler:
-        print("ps2_recomp.exe not found (out/recomp/ps2_recomp.exe); build it first.")
+        print(f"{RECOMPILER_NAME} not found; build it first.")
         return 1
     boot_names = set(DECL_LINE.findall((GENERATED / "ps2_recompiled_functions.h").read_text(encoding="utf-8")))
     done = skipped = 0
@@ -597,12 +607,15 @@ def configure(extra=()):
     args = ["cmake", "-S", ROOT, "-B", BUILD, "-G", "Ninja", "-DCMAKE_BUILD_TYPE=RelWithDebInfo",
             # No /GL over the generated code ever (src/CMakeLists.txt); KAMITE_LTO adds it for the port and IOP only.
             "-DKAMITE_LTO=OFF"]
+    if sys.platform == "darwin":
+        args += ["-DCMAKE_OSX_ARCHITECTURES=arm64", "-DKAMITE_PCSX2_GS=OFF", "-DKAMITE_SDL_INPUT=OFF",
+                 "-DKAMITE_DEBUG_UI=OFF", "-DKAMITE_SALOON=OFF"]
     # KAMITE_DEPS: an already downloaded FetchContent _deps folder (raylib-src, ...) to reuse instead of downloading.
     # Default: the PS2Recomp checkout's out/rel/_deps next to this port, when it exists.
     deps = os.environ.get("KAMITE_DEPS") or (str(DEFAULT_DEPS) if DEFAULT_DEPS.is_dir() else "")
     if deps:
         for name in ("raylib", "sdl3", "imgui", "rlimgui", "nlohmann_json", "fmt", "elfio", "toml11", "libdwarf",
-                     "rabbitizer"):
+                     "rabbitizer", "sse2neon"):
             src = Path(deps) / f"{name}-src"
             if src.is_dir():
                 args.append(f"-DFETCHCONTENT_SOURCE_DIR_{name.upper()}={src.as_posix()}")
@@ -625,7 +638,7 @@ def build(target="kamite"):
         print("The recompiled game code is missing: run 'python -I build.py generate' first.")
         return 1
     if game_running():
-        print("GHR.exe is running: close it first (the link would fail).")
+        print(f"{EXE.name} is running: close it first (the link would fail).")
         return 1
     # build.ninja, not CMakeCache.txt: CMake writes the cache even when configure fails.
     if not (BUILD / "build.ninja").exists() and configure():
@@ -636,8 +649,10 @@ def build(target="kamite"):
     vsroot = find_vsroot()
     if vsroot:
         env["VSROOT"] = vsroot
-    cmd = vs_command("cmake", "--build", BUILD, "--target", target, "--", "-j", JOBS)
-    print("+", cmd, f"(log {log_path})", flush=True)
+    build_args = ["cmake", "--build", BUILD, "--target", target, "--", "-j", JOBS]
+    cmd = vs_command(*build_args) if WINDOWS else build_args
+    command_text = cmd if isinstance(cmd, str) else " ".join(str(part) for part in cmd)
+    print("+", command_text, f"(log {log_path})", flush=True)
     with open(log_path, "w", encoding="utf-8", errors="replace") as log:
         proc = subprocess.Popen(cmd, env=env, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
                                 text=True, errors="replace", creationflags=LOW_PRIORITY)
@@ -663,10 +678,25 @@ def build_all(args=()):
 
 # ---- run / boot ---------------------------------------------------------------------------------------------------
 
+def with_disc_arg(args):
+    args = list(args)
+    if "--iso" in args:
+        index = args.index("--iso")
+        if index + 1 < len(args):
+            path = Path(args[index + 1]).expanduser()
+            args[index + 1] = str(path.resolve() if path.is_absolute() else (ROOT / path).resolve())
+        return args
+    iso = find_iso()
+    if iso:
+        args += ["--iso", str(iso.resolve())]
+    return args
+
+
 def play(args=()):
     if not EXE.exists():
-        print("GHR.exe not built yet: run 'python -I build.py build' first.")
+        print(f"{EXE.name} not built yet: run 'python -I build.py build' first.")
         return 1
+    args = with_disc_arg(args)
     # Session header (sweep L2): play_last.log had elapsed seconds only, no wall-clock time or exe identity.
     digest = hashlib.sha256(EXE.read_bytes()).hexdigest()
     print(f"[session] start {time.strftime('%Y-%m-%d %H:%M:%S %z')} exe {EXE.name} sha256 {digest}", flush=True)
@@ -707,7 +737,7 @@ def summarize(log_path, code, stamp):
 
 def boot(args=()):
     """One hidden run with a wall-clock cap. Nothing appears on screen (no console window, hidden game window, muted).
-    GHR.exe stops itself at the cap (exit 124); only if it is still alive 60 s later is this one process killed."""
+    GHR stops itself at the cap (exit 124); only if it is still alive 60 s later is this one process killed."""
     args = list(args)
     seconds = 120
     extra = []
@@ -722,11 +752,12 @@ def boot(args=()):
         else:
             extra.append(args[i])
             i += 1
+    extra = with_disc_arg(extra)
     if not EXE.exists():
-        print("GHR.exe not built yet: run 'python -I build.py build' first.")
+        print(f"{EXE.name} not built yet: run 'python -I build.py build' first.")
         return 1
     if game_running():
-        print("GHR.exe is already running; not starting another one.")
+        print(f"{EXE.name} is already running; not starting another one.")
         return 1
     logs = BIN / "logs"
     logs.mkdir(parents=True, exist_ok=True)
@@ -770,7 +801,7 @@ def boot(args=()):
     with open(log_path, "w", encoding="utf-8") as out:
         proc = subprocess.Popen(cmd, cwd=BIN, env=env, stdin=subprocess.DEVNULL, stdout=out, stderr=subprocess.STDOUT,
                                 creationflags=flags)
-        print(f"GHR.exe pid {proc.pid}, cap {seconds} s")
+        print(f"{EXE.name} pid {proc.pid}, cap {seconds} s")
         try:
             code = proc.wait(timeout=seconds + 60)
         except subprocess.TimeoutExpired:
@@ -791,19 +822,23 @@ def status(args=()):
         ("generated code", GENERATED / "register_functions.cpp"),
         ("VU1 microcode compiled", GENERATED / "vu1" / "vu1_programs.cpp"),
         ("CMake cache", BUILD / "CMakeCache.txt"),
-        ("GHR.exe", EXE),
-        ("tools/win/vsenv.cmd", VSENV),
+        (EXE.name, EXE),
     ]
+    if WINDOWS:
+        rows.append(("tools/win/vsenv.cmd", VSENV))
     for label, path in rows:
         print(f"  [{'x' if Path(path).exists() else ' '}] {label}: {path}")
-    print(f"  Visual Studio (VSROOT): {find_vsroot() or 'not found'}")
+    if WINDOWS:
+        print(f"  Visual Studio (VSROOT): {find_vsroot() or 'not found'}")
+    else:
+        print(f"  native toolchain: cmake={shutil.which('cmake') or 'not found'}, ninja={shutil.which('ninja') or 'not found'}")
     return 0
 
 
 # ---- VU microcode ahead of time ------------------------------------------------------------------------------------
 
 VU_IMAGES = ROOT / "build" / "vu1_images"
-VU1_RECOMP = BUILD / "runtime" / "ps2xTest" / "vu1_recomp.exe"
+VU1_RECOMP = BUILD / "runtime" / "ps2xTest" / VU1_RECOMP_NAME
 
 
 def near_clip_patch(code):
@@ -874,7 +909,7 @@ def vu(args=()):
     staging = ROOT / "build" / "vu1_staging"
     shutil.rmtree(staging, ignore_errors=True)
     staging.mkdir(parents=True)
-    # vu1_recomp links the runtime library, which loads SDL3.dll when controllers go through SDL: it is in bin/.
+    # On Windows vu1_recomp links the runtime library, which may load SDL3.dll from bin/.
     env = dict(os.environ)
     env["PATH"] = str(BIN) + os.pathsep + env.get("PATH", "")
     code = run([VU1_RECOMP, VU_IMAGES, staging], env=env)

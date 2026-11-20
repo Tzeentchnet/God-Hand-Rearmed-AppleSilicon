@@ -5,7 +5,7 @@
 #include <cstring>
 #include <vector>
 #include <cstdlib>
-#include <smmintrin.h>
+#include "ps2_simd.h"
 
 // vu/ps2_vu1_core.cpp: with PS2X_VU1_CAPTURE set, every VU1 microcode upload is saved for vu1_recomp.
 void ps2xNoteVu1Upload(uint32_t byteAddress, const uint8_t *data, uint32_t size);

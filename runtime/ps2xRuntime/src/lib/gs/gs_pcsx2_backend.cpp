@@ -778,6 +778,7 @@ void ps2x::gs::setAspect(Aspect aspect)
 
 #else // no pcsx2gs_api.h: the built-in GS only
 
+void ps2xRequestGifDump(uint32_t, const char *) {}
 void ps2x::gs::setAspect(Aspect) {}
 
 bool GSPcsx2Backend::Requested() { return false; }

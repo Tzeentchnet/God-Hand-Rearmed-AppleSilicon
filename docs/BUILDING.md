@@ -6,13 +6,18 @@ How to build God Hand: Rearmed (codename Kamite) from source, play it, and work 
 
 ### What you need
 
-1. **Windows 10 or 11** and a reasonably modern graphics card.
-2. **Visual Studio 2022 Build Tools** with "Desktop development with C++" (free from Microsoft).
+1. One of these platforms:
+   - **Windows 10 or 11** and a reasonably modern graphics card.
+   - **Apple Silicon macOS**. This source build is experimental and currently uses the built-in GS renderer.
+2. The native build tools:
+   - Windows: **Visual Studio 2022 Build Tools** with "Desktop development with C++" (free from Microsoft).
+   - macOS: Xcode's command-line tools plus CMake and Ninja (`xcode-select --install` and
+     `brew install cmake ninja python`).
 3. **Python 3.10 or newer**.
 4. **Your own disc image of the game** (USA, `.iso`, serial SLUS-21503). It must be this exact version: check it against
    [DISC_HASHES.md](../DISC_HASHES.md). The port refuses any other disc.
 
-### Build it
+### Build it on Windows
 
 Open a terminal (PowerShell) and run these one at a time:
 
@@ -20,6 +25,7 @@ Open a terminal (PowerShell) and run these one at a time:
 git clone https://github.com/God-Hand-Rearmed/God-Hand-Rearmed.git
 cd God-Hand-Rearmed
 copy "D:\path\to\your-disc.iso" game\
+$env:KAMITE_ALLOW_DOWNLOADS="1"
 python -I build.py generate
 python -I tools\snr2\snr2.py --iso "game\your-disc.iso" extract
 python -I tools\snr2\gen_modules.py
@@ -29,18 +35,55 @@ python -I build.py configure -DKAMITE_PCSX2_GS=ON -DKAMITE_SDL_INPUT=ON
 python -I build.py build
 ```
 
+### Build it on Apple Silicon
+
+Run these commands in Terminal:
+
+```bash
+git clone https://github.com/Tzeentchnet/God-Hand-Rearmed-AppleSilicon.git
+cd God-Hand-Rearmed-AppleSilicon
+cp "/path/to/God Hand (USA).iso" game/
+export KAMITE_ALLOW_DOWNLOADS=1
+python3 -I build.py generate
+python3 -I tools/snr2/snr2.py --iso "game/God Hand (USA).iso" extract
+python3 -I tools/snr2/gen_modules.py
+python3 -I build.py modules
+python3 -I build.py vu
+python3 -I build.py configure
+python3 -I build.py build
+python3 -I build.py boot --seconds 15
+```
+
+The final `boot` is a hidden smoke test. Exit code 124 means the game ran until the requested time limit; a crash,
+wrong-disc error, or missing recompiled function is reported separately. The build is forced to native `arm64`, even
+when Terminal is running under Rosetta.
+
 - `generate` and the SNR2 steps turn the code from your disc into C++ and take a while; `vu` compiles the PS2's VU1
   microcode ahead of time. The playable characters need no step: the game makes them from your disc when it starts.
 - `build` downloads a few libraries the first time and then compiles everything (expect 10+ minutes).
+- `KAMITE_ALLOW_DOWNLOADS=1` permits CMake to fetch pinned open-source dependencies during the first configure. Later
+  builds can omit it and reuse `build/port/_deps`.
 
 ### Play
 
-Double-click **`Start-GHR.cmd`**, or run `build\port\bin\GHR.exe`. The launcher opens first: point it at your
-disc image once, then Play. The very first start can sit on a black screen for a couple of minutes while the graphics
-are prepared for your card; later starts take seconds.
+On Windows, double-click **`Start-GHR.cmd`**, or run `build\port\bin\GHR.exe`. The launcher opens first: point it at
+your disc image once, then Play.
 
-Your settings are in `build\port\bin\GHR.ini` (every launcher option is a line there, with a comment), your saves in
-`build\port\bin\memcards\`, your controls in `build\port\bin\controls.ini`.
+On Apple Silicon, run:
+
+```bash
+python3 -I build.py run
+```
+
+`build.py` supplies the first matching ISO in `game/`. The experimental macOS build currently disables the launcher,
+the PCSX2 Vulkan/DX11 renderer, SDL controller input, and the saloon UI. It uses the built-in renderer and GLFW
+controller support. These limitations do not affect the recompiled game, SNR2 modules, saves, keyboard input, or audio.
+
+The very first start can sit on a black screen for a couple of minutes while graphics are prepared; later starts take
+seconds.
+
+Your settings are in `build/port/bin/GHR.ini`, your saves in `build/port/bin/memcards/`, and your controls in
+`build/port/bin/controls.ini`.
 
 ### Options
 
@@ -84,12 +127,13 @@ next to `GHR.exe`.
 | "Wrong disc" message | Your image is a different version. Compare it with [DISC_HASHES.md](../DISC_HASHES.md). |
 | Black screen on the very first start | Wait: the graphics are being prepared. Later starts are fast. |
 | Short pauses the first time an effect appears | Its shaders are being prepared; they do not come back once seen. |
+| macOS reports that GHR cannot be opened | This source build is unsigned. In System Settings > Privacy & Security, allow it, or run it from Terminal with `python3 -I build.py run`. |
 | Controls screen (F1) does not draw | With the PCSX2 renderer it cannot be drawn yet: use the launcher's Controls tab. |
 | The game crashes or freezes | Please report it with the log (next section). |
 
 ## Reporting bugs
 
-Open an issue and attach the log of your last session: `build\port\bin\logs\play_last.log` (the session before that is
+Open an issue and attach the log of your last session: `build/port/bin/logs/play_last.log` (the session before that is
 kept as `logs\play_<time>.log`), and `logs\crash.txt` if there is one. Say where in the game it happened and which
 options were on (60 FPS, aspect ratio, character).
 

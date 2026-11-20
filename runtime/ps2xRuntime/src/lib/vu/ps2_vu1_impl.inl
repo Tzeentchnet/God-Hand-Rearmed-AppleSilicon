@@ -1,6 +1,6 @@
 #pragma once
 
-#include <smmintrin.h> // SSE4.1: blendps / blendvps (blendDestK, vnorm)
+#include "ps2_simd.h"
 #include "runtime/ps2_vu1_native.h"
 #include "ps2x/state_io.h"
 #include "runtime/ps2_vu1.h"
@@ -14,7 +14,6 @@
 #include <bit>
 #include <cmath>
 #include <cstring>
-#include <emmintrin.h>
 #include <limits>
 #include <string>
 #include <vector>

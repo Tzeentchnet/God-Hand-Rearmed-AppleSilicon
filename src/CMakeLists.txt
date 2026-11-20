@@ -10,6 +10,11 @@ if(KAMITE_ARCH STREQUAL "AVX2")
 else()
     set(KAMITE_ARCH_FLAG "")
 endif()
+if(CMAKE_SYSTEM_PROCESSOR MATCHES "^(arm64|aarch64|ARM64)$" OR CMAKE_OSX_ARCHITECTURES STREQUAL "arm64")
+    set(KAMITE_HOST_ARCH "NEON")
+else()
+    set(KAMITE_HOST_ARCH "${KAMITE_ARCH}")
+endif()
 
 set(KAMITE_GENERATED_DIR "${CMAKE_SOURCE_DIR}/generated")
 set(KAMITE_RUNTIME_INCLUDE "${CMAKE_SOURCE_DIR}/runtime/ps2xRuntime/include")
@@ -372,13 +377,16 @@ add_dependencies(kamite kamite_resources)
 target_include_directories(kamite PRIVATE
     "${CMAKE_CURRENT_SOURCE_DIR}"
     "${CMAKE_CURRENT_BINARY_DIR}/kamite_generated"
-    "${KAMITE_GENERATED_DIR}")
+    "${KAMITE_GENERATED_DIR}"
+    "${CMAKE_SOURCE_DIR}/runtime/ps2xRuntime/src/lib")
 target_link_libraries(kamite PRIVATE kamite_game_code ps2_runtime)
-target_compile_definitions(kamite PRIVATE KAMITE_RUNTIME_HAS_SET_HEADLESS=${KAMITE_RUNTIME_HAS_SET_HEADLESS})
+target_compile_definitions(kamite PRIVATE
+    KAMITE_RUNTIME_HAS_SET_HEADLESS=${KAMITE_RUNTIME_HAS_SET_HEADLESS}
+    KAMITE_ARCH_NAME="${KAMITE_HOST_ARCH}")
 
 if(MSVC)
     target_compile_options(kamite PRIVATE /fp:precise /W3 /utf-8)
-    target_compile_definitions(kamite PRIVATE _CRT_SECURE_NO_WARNINGS KAMITE_ARCH_NAME="${KAMITE_ARCH}")
+    target_compile_definitions(kamite PRIVATE _CRT_SECURE_NO_WARNINGS)
     # /FORCE:MULTIPLE: WinAPI vs raylib CloseWindow clash. Large stack: deep guest call chains run on the host stack.
     # /LTCG in RelWithDebInfo as Urban does: ps2_runtime is compiled with /GL by EnableFastReleaseMode
     # (runtime/ps2xRuntime/cmake/ReleaseMode.cmake, CMakeLists.txt:609-611), so the link does code generation for the
@@ -430,7 +438,6 @@ endif()
 
 if(KAMITE_DEBUG_UI AND TARGET rlImGui)
     target_sources(kamite PRIVATE "${CMAKE_SOURCE_DIR}/runtime/ps2xRuntime/src/lib/ps2_debug_panel.cpp")
-    target_include_directories(kamite PRIVATE "${CMAKE_SOURCE_DIR}/runtime/ps2xRuntime/src/lib")
     target_link_libraries(kamite PRIVATE rlImGui imgui)
     target_compile_definitions(kamite PRIVATE PS2X_ENABLE_DEBUG_UI=1)
     # The launcher (src/kamite/launcher.cpp) draws with the same Dear ImGui.

@@ -5,6 +5,7 @@
 #include "runtime/gs/gs_gpu_backend.h"
 #include "gs_sampler.h"
 #include "runtime/gs/gs_frontend.h"
+#include "ps2_runtime.h"
 
 #include <algorithm>
 #include <array>
@@ -17,7 +18,12 @@
 #include <map>
 #include <memory>
 #include <string>
-#include <xmmintrin.h>
+#include "ps2_simd.h"
+
+const uint32_t g_ps2RecompiledFunctionTableBase = 0u;
+const uint32_t g_ps2RecompiledFunctionTableEnd = 0u;
+const uint32_t g_ps2RecompiledFunctionTableSlotCount = 0u;
+PS2Runtime::RecompiledFunction g_ps2RecompiledFunctionTable[1] = {};
 
 namespace GSRaster
 {
@@ -681,6 +687,7 @@ int main(int argc, char **argv)
 
     if (doSample)
     {
+#if defined(_WIN32)
         GSSampler sampler;
         sampler.Start();
         for (int run = 0; run < repeat; ++run)
@@ -690,6 +697,10 @@ int main(int argc, char **argv)
         }
         sampler.StopAndReport(40);
         return 0;
+#else
+        std::cerr << "--sample is only supported on Windows\n";
+        return 2;
+#endif
     }
 
     int status = 0;

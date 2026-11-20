@@ -18,7 +18,7 @@
 #include <mutex>
 #include <tuple>
 #include <vector>
-#include <xmmintrin.h>
+#include "ps2_simd.h"
 
 namespace
 {

@@ -11,6 +11,9 @@ screen, with as much or as little of our own nonsense as you want.
 > [!WARNING]
 > **Beta!** Plays from the first punch to the credits, but expect the odd bug. Found one? [Tell us](#found-a-bug).
 
+> [!NOTE]
+> This fork adds an experimental native Apple Silicon source build. See [Building and using God Hand: Rearmed](docs/BUILDING.md#build-it-on-apple-silicon).
+
 > **No game files included!** Play your own damn copy! (USA, SLUS-21503; see [DISC_HASHES.md](DISC_HASHES.md)).
 
 <!-- MEDIA: assets/readme/hero.gif — the hero shot: a fight at 60 FPS, widescreen -->

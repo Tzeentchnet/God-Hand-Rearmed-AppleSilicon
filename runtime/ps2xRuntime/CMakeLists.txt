@@ -551,7 +551,7 @@ target_include_directories(ps2_runtime PUBLIC
 
 # FFmpeg is used only inside the runtime (Kernel/Stubs/MPEG.cpp). Linking it PRIVATE keeps its include directories
 # out of the generated game code's compile lines, so toggling PS2X_ENABLE_FFMPEG does not rebuild ~8,000 files.
-target_link_libraries(ps2_runtime PUBLIC ps2_host_backend ps2_iop)
+target_link_libraries(ps2_runtime PUBLIC ps2_host_backend ps2_iop ps2x_simd_compat)
 target_link_libraries(ps2_runtime PRIVATE ffmpeg)
 
 # libchdr (BSD-3, with its own lzma / miniz / zstd): CHD disc images (ps2_cd_image.cpp). Static, no tests.

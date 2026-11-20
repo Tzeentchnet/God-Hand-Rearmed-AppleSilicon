@@ -1762,6 +1762,7 @@ namespace kamite::options_screen
         int presetOfSlot(int slot) { return slot >= presets::kCount ? presets::kCustom : slot; }
         int slotOfPreset(int preset) { return preset < 0 ? kCustomSlot : preset; }
 
+#if defined(KAMITE_HAS_SCREEN_OVERLAY)
         // The carousel's text fitted to the screen (fitPresetText), kept while the slot and the aspect stay.
         struct PresetText
         {
@@ -1819,6 +1820,7 @@ namespace kamite::options_screen
                 }
             }
         }
+#endif
 
         // Into the carousel, on the preset in use (CUSTOM while the settings match none).
         void openPresets(Screen &s)

@@ -107,6 +107,8 @@ PUBLIC
     toml11::toml11 
     dwarf
     rabbitizer
+PRIVATE
+    ps2x_simd_compat
 )
 
 file(GLOB_RECURSE PS2RECOMP_EXE_SOURCES CONFIGURE_DEPENDS
