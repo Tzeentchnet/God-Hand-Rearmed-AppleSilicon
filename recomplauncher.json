@@ -741,7 +741,7 @@
     {
       "id": "VSync",
       "label": "VSync",
-      "help": "On: no screen tearing. Off: for G-Sync | FreeSync. The rest get torn up.",
+      "help": "Off: smooth KosmicKrisp presentation on Apple Silicon. On: tear-free presentation on Windows.",
       "group": "Game Window",
       "choices": [
         {
@@ -758,7 +758,7 @@
         }
       ],
       "defaults": {
-        "Video/VSync": "2"
+        "Video/VSync": "0"
       }
     },
     {

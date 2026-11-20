@@ -225,7 +225,7 @@ Every option, with the same help text you'll see in the launcher and in game.
 - **Display Mode:** Window, max window, or borderless fullscreen. On Apple Silicon, macOS Game Mode activates while the game is frontmost and fullscreen. You can also use F11, if you're into that. *Fullscreen (Borderless) / Maximized Window / Window*
   - **Window Size:** The window's size when it opens (not maximized or fullscreen). *Automatic (follows internal resolution) / PS2 size*
 - **Aspect Ratio:** Screen width from 4:3 to wider than yo momma! *4:3 (the PS2's) / 16:9 / 16:10 / 21:9 / 32:9 / Match the screen* `Remastered+`
-- **VSync:** On: no screen tearing. Off: for G-Sync | FreeSync. The rest get torn up. *On / Off*
+- **VSync:** Off: smooth KosmicKrisp presentation on Apple Silicon. On: tear-free presentation on Windows. *On / Off*
 
 </details>
 <details>

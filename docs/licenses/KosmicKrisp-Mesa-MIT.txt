@@ -2,7 +2,7 @@ KosmicKrisp
 ============
 
 The bundled KosmicKrisp Vulkan driver is built from the Mesa fork at:
-https://github.com/Kenji-NX/mesa (branch kk/26.2)
+https://github.com/Kenji-NX/mesa (KosmicKrisp tag v26.1.5-ryujinx)
 
 The Vulkan driver source includes these notices:
 

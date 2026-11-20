@@ -390,8 +390,10 @@ void GSPcsx2Backend::AttachHostWindow(void *parentHwnd)
 #else
     g_parent = parentHwnd;
     g_child = parentHwnd;
-    const uint32_t width = static_cast<uint32_t>(std::max(1, GetRenderWidth()));
-    const uint32_t height = static_cast<uint32_t>(std::max(1, GetRenderHeight()));
+    // Keep the Vulkan swap chain at the logical window size. GetRenderWidth/Height are Retina pixels on macOS, which
+    // makes KosmicKrisp compose four times as many output pixels after the GS has already rendered at its own scale.
+    const uint32_t width = static_cast<uint32_t>(std::max(1, GetScreenWidth()));
+    const uint32_t height = static_cast<uint32_t>(std::max(1, GetScreenHeight()));
 #endif
     g_clientWidth.store(width);
     g_clientHeight.store(height);
@@ -444,8 +446,8 @@ void GSPcsx2Backend::HostTick()
     if (g_newChild)
         SetWindowPos(g_newChild, nullptr, 0, 0, static_cast<int>(width), static_cast<int>(height), SWP_NOZORDER | SWP_NOACTIVATE);
 #else
-    const uint32_t width = static_cast<uint32_t>(std::max(1, GetRenderWidth()));
-    const uint32_t height = static_cast<uint32_t>(std::max(1, GetRenderHeight()));
+    const uint32_t width = static_cast<uint32_t>(std::max(1, GetScreenWidth()));
+    const uint32_t height = static_cast<uint32_t>(std::max(1, GetScreenHeight()));
 #endif
     g_clientWidth.store(width, std::memory_order_relaxed);
     g_clientHeight.store(height, std::memory_order_relaxed);
@@ -596,7 +598,7 @@ bool GSPcsx2Backend::EnsureOpen()
     params.scale = static_cast<float>(std::clamp(envInt("PS2X_GS_SCALE", 1), 1, 8));
     params.resources = resources.c_str();
     params.cache = cache.c_str();
-    params.vsync = static_cast<uint32_t>(std::clamp(envInt("PS2X_PCSX2_VSYNC", 2), 0, 2)); // mailbox: no tearing, no wait
+    params.vsync = static_cast<uint32_t>(std::clamp(envInt("PS2X_PCSX2_VSYNC", 2), 0, 2)); // 0 immediate, 1 FIFO, 2 mailbox
     params.stretch = envInt("PS2X_PCSX2_STRETCH", 0) != 0 ? 1u : 0u;
     // Image options (pcsx2gs_api.h): PS2X_PCSX2_<KEY> -> key=value. FXAA is on unless PS2X_PCSX2_FXAA=0.
     static constexpr struct

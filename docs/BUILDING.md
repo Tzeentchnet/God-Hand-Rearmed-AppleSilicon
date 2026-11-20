@@ -83,6 +83,7 @@ build uses PCSX2 Vulkan through its bundled KosmicKrisp driver; Direct3D 11 is W
 launcher, SDL controller input, and the saloon UI, and uses GLFW controller support. These limitations do not affect
 the recompiled game, SNR2 modules, saves, keyboard input, HD replacement textures, or audio. The app declares Game Mode
 support; macOS activates it while the game is frontmost and fullscreen and disables it after returning to a window.
+VSync defaults off on Apple Silicon because KosmicKrisp's mailbox presentation can stall the emulation at 30 Hz.
 
 The very first start can sit on a black screen for a couple of minutes while graphics are prepared; later starts take
 seconds.

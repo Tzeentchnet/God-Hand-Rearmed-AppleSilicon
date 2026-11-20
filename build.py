@@ -15,7 +15,7 @@
                                                       boot (src/kamite/builtin_characters.h) and ignores that folder; a
                                                       check of the C++ build (the same bytes)
     python -I build.py boot [--seconds N] [--iso X]   one hidden, time-capped run; output in build/port/bin/logs
-    python -I build.py run [args]                     a normal run in a window (arguments go to GHR)
+    python -I build.py run [args]                     a normal run (arguments go to GHR)
     python -I build.py status                         what exists so far
 
 Needs Python 3.10+, CMake, Ninja and your own disc image (USA, SLUS-21503) in game/ (or KAMITE_ISO / --iso).
@@ -703,7 +703,7 @@ def play(args=()):
     digest = hashlib.sha256(EXE.read_bytes()).hexdigest()
     print(f"[session] start {time.strftime('%Y-%m-%d %H:%M:%S %z')} exe {EXE.name} sha256 {digest}", flush=True)
     # --time-limit 0: a normal run is not capped (the ini default TimeLimitSeconds is for hidden boots).
-    game_args = ["--window", "--time-limit", "0", *args]
+    game_args = ["--time-limit", "0", *args]
     app_log = None
     temporary_log = None
     if sys.platform == "darwin":

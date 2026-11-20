@@ -192,8 +192,8 @@ if(APPLE)
     include(FetchContent)
     FetchContent_Declare(
         kamite_kosmickrisp
-        URL "https://github.com/Kenji-NX/KosmicKrisp/releases/download/v26.2.1-ryu.1/KosmicKrisp-26.2.1-ryu.1.tar.zst"
-        URL_HASH SHA256=0734e03cc9da92abad83377d36051f2928c3e6a1d515a6f5bc596c7e667ef0ba
+        URL "https://github.com/Kenji-NX/KosmicKrisp/releases/download/v26.1.5-ryujinx/KosmicKrisp-26.1.5-ryujinx.tar.zst"
+        URL_HASH SHA256=aea26073d0b1b0749a17a2a58bbf18b4d23a0d6841af1c265f7ad11ec135e29d
         DOWNLOAD_EXTRACT_TIMESTAMP TRUE
         SOURCE_SUBDIR kamite-sources-only)
     FetchContent_MakeAvailable(kamite_kosmickrisp)

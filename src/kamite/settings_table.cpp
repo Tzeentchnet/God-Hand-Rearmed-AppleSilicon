@@ -249,8 +249,8 @@ namespace kamite::settings
                               kOnLeaveNote))),
         // Help texts: K's (Nov 17).
         live(choice(Tab::Display, "Game Window", "VSync",
-                    "On: no screen tearing.\nOff: for G-Sync | FreeSync. The rest get torn up.", "Video", "VSync", "2",
-                    kVsyncs)),
+                    "Off: smooth KosmicKrisp presentation on Apple Silicon.\nOn: tear-free presentation on Windows.",
+                    "Video", "VSync", "0", kVsyncs)),
 
         // ---- Graphics (K, Nov 15: its own tab; claude/graphics-options.md) ---------------------------------------
         live(onLeave(gameNote(choice(Tab::Graphics, "Renderer", "Graphics API", kGraphicsApiDescription, "Video",
