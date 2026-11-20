@@ -97,7 +97,8 @@ freaks who want to play God Hand at their desks).
 
 Too many choices? How about just one? Pick a preset and get to playing right away.
 
-> **NOTE:** Everything that changes Clover's original gameplay is opt-in, so no bitchin!
+> **NOTE:** New installs run at 60 FPS by default. Choose **Classic** for Clover's original 30 FPS gameplay; the other
+> gameplay changes remain opt-in, so no bitchin!
 
 ### The Presets
 
@@ -272,7 +273,7 @@ Every option, with the same help text you'll see in the launcher and in game.
 
 **Speed & Feed**
 
-- **60 FPS:** Play at a smooth sexy silky 60FPS. Leave OFF if you want the OG experience. `Remastered+`
+- **60 FPS:** Play at a smooth sexy silky 60FPS. ON by default; turn OFF for the OG 30 FPS experience. `Remastered+`
 
 **Move & Groove**
 

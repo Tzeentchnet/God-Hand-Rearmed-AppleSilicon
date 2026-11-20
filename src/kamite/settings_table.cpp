@@ -307,8 +307,8 @@ namespace kamite::settings
 
         // ---- Gameplay -------------------------------------------------------------------------------------------
         live(toggle(Tab::Gameplay, "Speed & Feed", "60 FPS",
-                    "Play at a smooth sexy silky 60FPS.\nLeave OFF if you want the OG experience.", "Game",
-                    "Fps60", false)),
+                    "Play at a smooth sexy silky 60FPS.\nON by default; turn OFF for the OG 30 FPS experience.", "Game",
+                    "Fps60", true)),
         // One Control Style per device (K, Nov 16): the one in effect is the device used last.
         // In game one Control Style: the device in use's (K, Nov 16); the launcher lists both.
         live(onDevice(note(gameList(choice(Tab::Gameplay, "Move & Groove", "Control Style: Pad",

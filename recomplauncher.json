@@ -1180,7 +1180,7 @@
     {
       "id": "Fps60",
       "label": "60 FPS",
-      "help": "Play at a smooth sexy silky 60FPS. Leave OFF if you want the OG experience.",
+      "help": "Play at a smooth sexy silky 60FPS. ON by default; turn OFF for the OG 30 FPS experience.",
       "group": "Speed & Feed",
       "choices": [
         {
@@ -1197,7 +1197,7 @@
         }
       ],
       "defaults": {
-        "Game/Fps60": "0"
+        "Game/Fps60": "1"
       }
     },
     {
