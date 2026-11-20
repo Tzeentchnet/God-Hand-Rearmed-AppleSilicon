@@ -608,7 +608,7 @@ def configure(extra=()):
             # No /GL over the generated code ever (src/CMakeLists.txt); KAMITE_LTO adds it for the port and IOP only.
             "-DKAMITE_LTO=OFF"]
     if sys.platform == "darwin":
-        args += ["-DCMAKE_OSX_ARCHITECTURES=arm64", "-DKAMITE_PCSX2_GS=OFF", "-DKAMITE_SDL_INPUT=OFF",
+        args += ["-DCMAKE_OSX_ARCHITECTURES=arm64", "-DKAMITE_PCSX2_GS=ON", "-DKAMITE_SDL_INPUT=OFF",
                  "-DKAMITE_DEBUG_UI=OFF", "-DKAMITE_SALOON=OFF"]
     # KAMITE_DEPS: an already downloaded FetchContent _deps folder (raylib-src, ...) to reuse instead of downloading.
     # Default: the PS2Recomp checkout's out/rel/_deps next to this port, when it exists.
@@ -620,8 +620,8 @@ def configure(extra=()):
             if src.is_dir():
                 args.append(f"-DFETCHCONTENT_SOURCE_DIR_{name.upper()}={src.as_posix()}")
     # Never download at configure time unless asked: a missing dependency fails instead.
-    if os.environ.get("KAMITE_ALLOW_DOWNLOADS") != "1":
-        args.append("-DFETCHCONTENT_FULLY_DISCONNECTED=ON")
+    args.append("-DFETCHCONTENT_FULLY_DISCONNECTED=" +
+                ("OFF" if os.environ.get("KAMITE_ALLOW_DOWNLOADS") == "1" else "ON"))
     # The recompiler is not part of the game build; only an explicit -DKAMITE_BUILD_RECOMP=ON turns it on, and every
     # other configure resets it (a stale ON would pull elfio, toml11, fmt, libdwarf and rabbitizer).
     if not any(a.startswith("-DKAMITE_BUILD_RECOMP=") for a in extra):

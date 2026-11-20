@@ -8,10 +8,15 @@
 #include "Config.h"
 #include "GS/GS.h"
 #include "GS/Renderers/Common/GSRenderer.h"
+#if defined(_WIN32)
 #include "VKDxgiPresent.h" // before DX11, as GS.cpp: g_vkDxgiPresent, the DXGI swap chain under Vulkan
 #include "GS/Renderers/DX11/GSDevice11.h"
+#elif defined(__APPLE__)
+#include "common/CocoaTools.h"
+#endif
 #include "GS/Renderers/HW/GSTextureReplacements.h"
 #include "GS/Renderers/HW/GSTextureCache.h" // g_texture_cache (DllMain)
+#include "common/FPControl.h"
 
 #include <algorithm>
 #include <cctype>
@@ -22,7 +27,12 @@
 #include <string>
 #include <string_view>
 #include <vector>
-#include <xmmintrin.h>
+
+#if defined(_WIN32)
+#define PCSX2GS_EXPORT __declspec(dllexport)
+#else
+#define PCSX2GS_EXPORT __attribute__((visibility("default")))
+#endif
 
 namespace pcsx2gs
 {
@@ -54,9 +64,9 @@ namespace
     // top bit as 0 (every green >= 128 picked the palette's dark end: the splotches, Nov 1). Every entry sets it.
     struct HostFpuMode
     {
-        unsigned saved;
-        HostFpuMode() : saved(_mm_getcsr()) { _mm_setcsr(0x1F80u); }
-        ~HostFpuMode() { _mm_setcsr(saved); }
+        FPControlRegister saved;
+        HostFpuMode() : saved(FPControlRegister::GetCurrent()) { FPControlRegister::SetCurrent(FPControlRegister::GetDefault()); }
+        ~HostFpuMode() { FPControlRegister::SetCurrent(saved); }
         HostFpuMode(const HostFpuMode &) = delete;
         HostFpuMode &operator=(const HostFpuMode &) = delete;
     };
@@ -262,13 +272,19 @@ namespace
             }
             if (key == "api")
             {
+#if defined(_WIN32)
                 g_graphicsApi = (text == "vulkan" || text == "vk") ? GSRendererType::VK : GSRendererType::DX11;
+#else
+                g_graphicsApi = GSRendererType::VK;
+#endif
                 continue;
             }
             if (key == "dxgi_present")
             {
                 // Vulkan's frames shown through a DXGI swap chain (compat/VKDxgiPresent.h); 0 = Vulkan's own.
+#if defined(_WIN32)
                 pcsx2gs::g_vkDxgiPresent = value != 0;
+#endif
                 continue;
             }
             if (key == "texture_dir")
@@ -379,8 +395,17 @@ namespace
         if (g_open || !params || !params->hwnd)
             return 0;
         g_window = {};
+#if defined(_WIN32)
         g_window.type = WindowInfo::Type::Win32;
         g_window.window_handle = params->hwnd;
+#else
+        CocoaTools::GetWindowInfoFromWindow(&g_window, params->hwnd);
+        if (g_window.type != WindowInfo::Type::MacOS || !g_window.window_handle)
+        {
+            std::fprintf(stderr, "[pcsx2-gs] could not get the macOS content view\n");
+            return 0;
+        }
+#endif
         g_window.surface_width = std::max(1u, params->width);
         g_window.surface_height = std::max(1u, params->height);
         pcsx2gs::SetRenderWindow(g_window);
@@ -407,6 +432,7 @@ namespace
                                   : params->vsync == 2u ? GSVSyncMode::Mailbox
                                                         : GSVSyncMode::Disabled;
         bool opened = GSopen(options, options.Renderer, g_regs, vsync, false);
+#if defined(_WIN32)
         if (!opened && options.Renderer == GSRendererType::VK)
         {
             // Vulkan could not start (no driver, or shaderc_shared.dll missing): Direct3D 11 instead.
@@ -415,6 +441,7 @@ namespace
             EmuConfig.GS.Renderer = GSRendererType::DX11;
             opened = GSopen(options, options.Renderer, g_regs, vsync, false);
         }
+#endif
         if (!opened)
         {
             std::fprintf(stderr, "[pcsx2-gs] GSopen failed\n");
@@ -438,6 +465,9 @@ namespace
         if (!g_open || !api || !g_gs_device || !g_gs_renderer)
             return -1;
         const std::string name = lower(api);
+#if defined(__APPLE__)
+        return (name == "vulkan" || name == "vk") ? 2 : 0;
+#else
         const GSRendererType want = (name == "vulkan" || name == "vk") ? GSRendererType::VK : GSRendererType::DX11;
         const RenderAPI wantApi = want == GSRendererType::VK ? RenderAPI::Vulkan : RenderAPI::D3D11;
         if (g_gs_device->GetRenderAPI() == wantApi)
@@ -486,6 +516,7 @@ namespace
         std::fprintf(stderr, "[pcsx2-gs] graphics API: %s%s (%dx%d), %zu added replacements restored\n", ApiName(now),
                      result ? "" : " (the switch failed; kept)", w, h, g_textureAdded.size());
         return result;
+#endif
     }
 
     void Close()
@@ -509,6 +540,7 @@ namespace
     // with mailbox vsync (tools/present_stats.py).
     void WritePresentStats()
     {
+#if defined(_WIN32)
         static std::FILE *file = []() -> std::FILE *
         {
             const char *path = std::getenv("PS2X_PRESENT_STATS");
@@ -533,6 +565,7 @@ namespace
             stats = {};
         std::fprintf(file, "%lld,%u,%u,%u,%u,%lld\n", static_cast<long long>(now.QuadPart), last, stats.PresentCount,
                      stats.PresentRefreshCount, stats.SyncRefreshCount, static_cast<long long>(stats.SyncQPCTime.QuadPart));
+#endif
     }
 
     void Vsync(const Pcsx2GsPrivRegs *regs)
@@ -703,7 +736,7 @@ namespace
     const Pcsx2GsApi g_api = {PCSX2GS_API_VERSION, Open, Close, Gif, Vsync, Reset, ReadFifo, Resize, SetScale, LoadVram, SaveVram, ReadLocal, pcsx2gs::SetOsd, Snapshot, pcsx2gs::SetMenu, pcsx2gs::MenuInput};
 }
 
-extern "C" __declspec(dllexport) const Pcsx2GsApi *pcsx2gs_get_api(uint32_t version)
+extern "C" PCSX2GS_EXPORT const Pcsx2GsApi *pcsx2gs_get_api(uint32_t version)
 {
     return version == PCSX2GS_API_VERSION ? &g_api : nullptr;
 }
@@ -778,7 +811,7 @@ namespace pcsx2gs
     }
 }
 
-extern "C" __declspec(dllexport) void pcsx2gs_set_option(const char *key, const char *value)
+extern "C" PCSX2GS_EXPORT void pcsx2gs_set_option(const char *key, const char *value)
 {
     const HostFpuMode fpu;
     if (!key || !value)
@@ -864,19 +897,19 @@ extern "C" __declspec(dllexport) void pcsx2gs_set_option(const char *key, const 
 }
 
 // Lines drawn over the image at each present (pcsx2gs_host.h SetOverlay): the port's hitbox overlay. Any thread.
-extern "C" __declspec(dllexport) void pcsx2gs_set_overlay(const float *lines, const uint32_t *colors, uint32_t count)
+extern "C" PCSX2GS_EXPORT void pcsx2gs_set_overlay(const float *lines, const uint32_t *colors, uint32_t count)
 {
     pcsx2gs::SetOverlay(lines, colors, count);
 }
 
 // Labels drawn over the image at each present (pcsx2gs_host.h SetOverlayText): the port's enemy labels. Any thread.
-extern "C" __declspec(dllexport) void pcsx2gs_set_overlay_text(const float *xy, const uint32_t *colors, const char *texts, uint32_t count)
+extern "C" PCSX2GS_EXPORT void pcsx2gs_set_overlay_text(const float *xy, const uint32_t *colors, const char *texts, uint32_t count)
 {
     pcsx2gs::SetOverlayText(xy, colors, texts, count);
 }
 
 // The port's own screen over the image (pcsx2gs_host.h SetScreen): the OPTIONS screen's text. Any thread.
-extern "C" __declspec(dllexport) void pcsx2gs_set_screen(const Pcsx2GsScreenItem *items, uint32_t count, const char *strings, uint32_t bytes)
+extern "C" PCSX2GS_EXPORT void pcsx2gs_set_screen(const Pcsx2GsScreenItem *items, uint32_t count, const char *strings, uint32_t bytes)
 {
     pcsx2gs::SetScreen(items, count, strings, bytes);
 }
@@ -886,14 +919,14 @@ extern "C" __declspec(dllexport) void pcsx2gs_set_screen(const Pcsx2GsScreenItem
 // kinds of swap chain; the port swaps it in for the old one after this returns). Returns 1 when the API asked for
 // runs, 2 when it already ran (nothing changed, the new window is not used), 0 when it could not start and the one
 // before runs again (in the new window), -1 when neither runs (nothing is drawn from then on).
-extern "C" __declspec(dllexport) int pcsx2gs_set_api(const char *api, void *hwnd, uint32_t width, uint32_t height)
+extern "C" PCSX2GS_EXPORT int pcsx2gs_set_api(const char *api, void *hwnd, uint32_t width, uint32_t height)
 {
     return ReopenApi(api, hwnd, width, height);
 }
 
 // The aspect ratio while the game runs (0 = 4:3, 1 = 16:9, 2 = fill the window), read at every present: the port uses
 // it to follow the game's own 4:3 / 16:9 option. Exported on its own so that the API table above stays the same.
-extern "C" __declspec(dllexport) void pcsx2gs_set_aspect(uint32_t mode)
+extern "C" PCSX2GS_EXPORT void pcsx2gs_set_aspect(uint32_t mode)
 {
     const HostFpuMode fpu;
     ApplyAspectMode(mode);
@@ -905,6 +938,7 @@ extern "C" __declspec(dllexport) void pcsx2gs_set_aspect(uint32_t mode)
 // already gone (Oct 26: a crash on every close of the window). The port now ends with TerminateProcess, which skips
 // this detach altogether; this stays for any other way out through ExitProcess. The texture cache goes first: it is
 // the one whose destructor reaches the others.
+#if defined(_WIN32)
 #include <windows.h>
 BOOL WINAPI DllMain(HINSTANCE, DWORD reason, LPVOID reserved)
 {
@@ -919,3 +953,4 @@ BOOL WINAPI DllMain(HINSTANCE, DWORD reason, LPVOID reserved)
     }
     return TRUE;
 }
+#endif

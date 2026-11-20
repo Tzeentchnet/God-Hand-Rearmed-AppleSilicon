@@ -5,14 +5,15 @@
 **God Hand for PS2. Recompiled, Refined, Rearmed.**
 
 An unofficial, fan-made native PC port of Clover Studio's **God Hand** (PlayStation 2, 2006). The game's own code is
-recompiled into a Windows program: no emulator running the show. It plays start to credits at a smooth 60, on any
-screen, with as much or as little of our own nonsense as you want.
+recompiled into a native Windows or Apple Silicon program: no emulator running the show. It plays start to credits at
+a smooth 60, on any screen, with as much or as little of our own nonsense as you want.
 
 > [!WARNING]
 > **Beta!** Plays from the first punch to the credits, but expect the odd bug. Found one? [Tell us](#found-a-bug).
 
 > [!NOTE]
-> This fork adds an experimental native Apple Silicon source build. See [Building and using God Hand: Rearmed](docs/BUILDING.md#build-it-on-apple-silicon).
+> This fork adds an experimental native Apple Silicon source build using PCSX2's Vulkan renderer through the bundled
+> KosmicKrisp driver on macOS 26 or newer. See [Building and using God Hand: Rearmed](docs/BUILDING.md#build-it-on-apple-silicon).
 
 > **No game files included!** Play your own damn copy! (USA, SLUS-21503; see [DISC_HASHES.md](DISC_HASHES.md)).
 
@@ -40,7 +41,8 @@ restarts. Your settings, saves, and mods stay where they are.
 
 ### God Hand - Gone Native!
 
-Recompiled as a Windows program under Vulkan or DX11; PCSX2 as the renderer until later.
+Recompiled as a native Windows or Apple Silicon program; PCSX2 as the renderer until later. Windows supports Vulkan
+or DX11, while Apple Silicon uses Vulkan through KosmicKrisp.
 
 ---
 
@@ -121,7 +123,8 @@ which preset first switches a feature on; `Toggle` means none does, it's yours t
 
 **Display & Graphics**
 - Fullscreen (borderless), maximized or windowed; any aspect ratio from 4:3 to 32:9.
-- Internal resolution up to 8x, Vulkan by default with Direct3D 11 as the fallback.
+- Internal resolution up to 8x. Apple Silicon uses bundled KosmicKrisp Vulkan; Windows uses Vulkan by default with
+  Direct3D 11 as the fallback.
 - Texture filtering from the PS2's own smoothing to Dangerously Crunchy, plus trilinear, anisotropic, FXAA,
   brightness and depth of field.
 - HD texture packs in PCSX2's format, with the game's own transparency kept intact. (K recommends this [texture pack](https://gbatemp.net/threads/god-hand-usa-uhd-remaster-definitive-fixed-transparency-glitches.638847), and no, Santins, you didn't fix the transparency issues, but no worries, GHR fixed 'em for you)
@@ -228,7 +231,7 @@ Every option, with the same help text you'll see in the launcher and in game.
 
 **Renderer**
 
-- **Graphics API:** Default: Vulkan | Fallback: DX11 *Vulkan / Direct3D 11*
+- **Graphics API:** Apple Silicon: bundled KosmicKrisp Vulkan. Windows: Vulkan with Direct3D 11 fallback. *Vulkan (KosmicKrisp on Apple Silicon) / Direct3D 11 (Windows)*
 - **Internal Resolution:** 1x: 448p | 2x: 896p | 3x: 1344p | 4x: 1792p *1x native (512x448) / 2x 1024x896 / 3x 1536x1344 / 4x 2048x1792 / 5x 2560x2240 / 6x 3072x2688 / 8x 4096x3584*
 
 **Textures**

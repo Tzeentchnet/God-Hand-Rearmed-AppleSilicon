@@ -30,6 +30,7 @@
 #include "R5900.h"
 #include "VMManager.h"
 #include "common/CrashHandler.h"
+#include "common/FileSystem.h"
 #include "common/Image.h"
 #include "imgui.h"
 #include "imgui_internal.h" // ImGui::RegisterUserTexture (the screen's images)
@@ -43,8 +44,12 @@
 #include <mutex>
 #include <string>
 
+#if defined(_WIN32)
 #define WIN32_LEAN_AND_MEAN
 #include <Windows.h>
+#else
+#include <sys/mman.h>
+#endif
 
 namespace
 {
@@ -499,11 +504,28 @@ const char *ReportInterlaceMode()
 // The software renderer's JIT code lives in PCSX2's code reservation; here only that part (64 MB) exists.
 u8 *SysMemory::GetCodePtr(size_t offset)
 {
-    static u8 *base = static_cast<u8 *>(
-        VirtualAlloc(nullptr, HostMemoryMap::SWrecSize, MEM_RESERVE | MEM_COMMIT, PAGE_EXECUTE_READWRITE));
+    static u8 *base = []() -> u8 *
+    {
+#if defined(_WIN32)
+        return static_cast<u8 *>(
+            VirtualAlloc(nullptr, HostMemoryMap::SWrecSize, MEM_RESERVE | MEM_COMMIT, PAGE_EXECUTE_READWRITE));
+#else
+        int flags = MAP_PRIVATE | MAP_ANON;
+#if defined(MAP_JIT)
+        flags |= MAP_JIT;
+#endif
+        void *mapping = mmap(nullptr, HostMemoryMap::SWrecSize, PROT_READ | PROT_WRITE | PROT_EXEC, flags, -1, 0);
+        return mapping == MAP_FAILED ? nullptr : static_cast<u8 *>(mapping);
+#endif
+    }();
     if (!base || offset < HostMemoryMap::SWrecOffset || offset > HostMemoryMap::SWrecOffset + HostMemoryMap::SWrecSize)
         return nullptr;
     return base + (offset - HostMemoryMap::SWrecOffset);
+}
+
+PageFaultHandler::HandlerResult PageFaultHandler::HandlePageFault(void *, void *, bool)
+{
+    return HandlerResult::ExecuteNextHandler;
 }
 
 // --- Host ---
@@ -699,7 +721,9 @@ bool ImGuiManager::Initialize()
         io.DisplayFramebufferScale = ImVec2(1, 1);
         // The OSD font: PCSX2's Roboto when resources/fonts has it, else ImGui's built-in one.
         const std::string roboto = EmuFolders::Resources + "/fonts/Roboto-Regular.ttf";
-        g_osdFont = GetFileAttributesA(roboto.c_str()) != INVALID_FILE_ATTRIBUTES ? io.Fonts->AddFontFromFileTTF(roboto.c_str(), 20.0f) : nullptr;
+        g_osdFont = FileSystem::FileExists(roboto.c_str()) ?
+                        io.Fonts->AddFontFromFileTTF(roboto.c_str(), 20.0f) :
+                        nullptr;
         if (!g_osdFont)
             g_osdFont = io.Fonts->AddFontDefault();
     }
@@ -763,12 +787,7 @@ namespace
 {
     bool LoadScreenImage(const char *path, std::vector<uint8_t> &rgba, int &width, int &height)
     {
-        const int wide = MultiByteToWideChar(CP_UTF8, 0, path, -1, nullptr, 0);
-        if (wide <= 0)
-            return false;
-        std::wstring widePath(static_cast<size_t>(wide), L'\0');
-        MultiByteToWideChar(CP_UTF8, 0, path, -1, widePath.data(), wide);
-        FILE *fp = _wfopen(widePath.c_str(), L"rb");
+        FILE *fp = FileSystem::OpenCFile(path, "rb");
         if (!fp)
             return false;
         GSTextureReplacements::CFile file(fp);

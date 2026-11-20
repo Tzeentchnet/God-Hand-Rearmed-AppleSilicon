@@ -8,7 +8,8 @@ How to build God Hand: Rearmed (codename Kamite) from source, play it, and work 
 
 1. One of these platforms:
    - **Windows 10 or 11** and a reasonably modern graphics card.
-   - **Apple Silicon macOS**. This source build is experimental and currently uses the built-in GS renderer.
+   - **Apple Silicon with macOS 26 or newer**. This source build is experimental and uses PCSX2's Vulkan renderer
+     through the bundled KosmicKrisp Vulkan-on-Metal driver.
 2. The native build tools:
    - Windows: **Visual Studio 2022 Build Tools** with "Desktop development with C++" (free from Microsoft).
    - macOS: Xcode's command-line tools plus CMake and Ninja (`xcode-select --install` and
@@ -60,7 +61,8 @@ when Terminal is running under Rosetta.
 
 - `generate` and the SNR2 steps turn the code from your disc into C++ and take a while; `vu` compiles the PS2's VU1
   microcode ahead of time. The playable characters need no step: the game makes them from your disc when it starts.
-- `build` downloads a few libraries the first time and then compiles everything (expect 10+ minutes).
+- `build` downloads a few libraries the first time and then compiles everything (expect 10+ minutes). On macOS this
+  includes the pinned KosmicKrisp Vulkan loader and driver.
 - `KAMITE_ALLOW_DOWNLOADS=1` permits CMake to fetch pinned open-source dependencies during the first configure. Later
   builds can omit it and reuse `build/port/_deps`.
 
@@ -75,9 +77,10 @@ On Apple Silicon, run:
 python3 -I build.py run
 ```
 
-`build.py` supplies the first matching ISO in `game/`. The experimental macOS build currently disables the launcher,
-the PCSX2 Vulkan/DX11 renderer, SDL controller input, and the saloon UI. It uses the built-in renderer and GLFW
-controller support. These limitations do not affect the recompiled game, SNR2 modules, saves, keyboard input, or audio.
+`build.py` supplies the first matching ISO in `game/`. The experimental macOS build uses PCSX2 Vulkan through its
+bundled KosmicKrisp driver; Direct3D 11 is Windows-only. It currently disables the launcher, SDL controller input, and
+the saloon UI, and uses GLFW controller support. These limitations do not affect the recompiled game, SNR2 modules,
+saves, keyboard input, HD replacement textures, or audio.
 
 The very first start can sit on a black screen for a couple of minutes while graphics are prepared; later starts take
 seconds.
@@ -90,7 +93,7 @@ Your settings are in `build/port/bin/GHR.ini`, your saves in `build/port/bin/mem
 | Where | What |
 |---|---|
 | Display | Game Window: display mode (fullscreen, maximized window or window) and window size, aspect ratio. Camera: Camera & FOV (presets; with "Show advanced settings": field of view, in fights, distance, tilt, enemies following the view), Steady Idle Camera, See Through. Interface: HUD layout (16:9 edges or 4:3), menu width (4:3 or stretched) |
-| Graphics | Renderer: graphics API (Vulkan or Direct3D 11), internal resolution (1x–8x). Effects: post effects (PS2 resolution or upscaled), depth of field |
+| Graphics | Renderer: KosmicKrisp Vulkan on Apple Silicon; Vulkan or Direct3D 11 on Windows; internal resolution (1x–8x). Effects: post effects (PS2 resolution or upscaled), depth of field |
 | Gameplay | 60 FPS; Click-Stick Dash, control style (classic / modern with mouse camera), Busta-Chan Jive; Moveset Presets, Buck Breaker; Cunt Punter, Sway Bar, Tension is Placable (and Off the Cuff), Wild Curry Funk; roulette timer, Target Select, Dry Spinning; Intro Skipper, Hard-On, Mute Music; Better Shop & Casino Poses |
 | Controls | Menu controls, button prompts, every key, mouse button and controller button (also F1 in game), the port's hotkeys |
 | Mods | Character: Gene or Xavier; HD texture pack and its folder |
@@ -127,6 +130,7 @@ next to `GHR.exe`.
 | "Wrong disc" message | Your image is a different version. Compare it with [DISC_HASHES.md](../DISC_HASHES.md). |
 | Black screen on the very first start | Wait: the graphics are being prepared. Later starts are fast. |
 | Short pauses the first time an effect appears | Its shaders are being prepared; they do not come back once seen. |
+| KosmicKrisp does not start | It requires macOS 26 or newer. Check that `build/port/bin/kosmickrisp/` contains the Vulkan loader, driver, and `icd.d/kosmickrisp_icd.json`; then rebuild with `KAMITE_ALLOW_DOWNLOADS=1`. |
 | macOS reports that GHR cannot be opened | This source build is unsigned. In System Settings > Privacy & Security, allow it, or run it from Terminal with `python3 -I build.py run`. |
 | Controls screen (F1) does not draw | With the PCSX2 renderer it cannot be drawn yet: use the launcher's Controls tab. |
 | The game crashes or freezes | Please report it with the log (next section). |

@@ -284,7 +284,7 @@ GSRendererType GSUtil::GetPreferredRenderer()
 	static GSRendererType preferred_renderer = GSRendererType::Auto;
 	if (preferred_renderer == GSRendererType::Auto)
 	{
-#if defined(__APPLE__)
+#if defined(__APPLE__) && defined(ENABLE_METAL)
 		// Mac: Prefer Metal hardware.
 		preferred_renderer = GSRendererType::Metal;
 #elif defined(_WIN32) && defined(ARCH_ARM64)

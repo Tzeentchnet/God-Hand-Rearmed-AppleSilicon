@@ -35,13 +35,14 @@ def dump_settings():
         sources = [str(ROOT / s) for s in SOURCES]
         for compiler in ("c++", "g++", "clang++"):
             if shutil.which(compiler):
-                cmd = [compiler, "-std=c++20", "-O0", "-I", str(ROOT / "src"), *sources, "-o", str(exe)]
+                cmd = [compiler, "-std=c++20", "-O0", "-DKAMITE_SETTINGS_WINDOWS=1",
+                       "-I", str(ROOT / "src"), *sources, "-o", str(exe)]
                 break
         else:
             if not shutil.which("cl"):
                 sys.exit("gen_manifest: no C++ compiler (c++, g++, clang++ or cl) on PATH")
-            cmd = ["cl", "/nologo", "/std:c++20", "/EHsc", "/utf-8", f"/I{ROOT / 'src'}", *sources, f"/Fe{exe}",
-                   f"/Fo{tmp}\\"]
+            cmd = ["cl", "/nologo", "/std:c++20", "/EHsc", "/utf-8", "/DKAMITE_SETTINGS_WINDOWS=1",
+                   f"/I{ROOT / 'src'}", *sources, f"/Fe{exe}", f"/Fo{tmp}\\"]
         subprocess.run(cmd, check=True, cwd=tmp)
         out = subprocess.run([str(exe)], check=True, capture_output=True).stdout
     return json.loads(out.decode("utf-8"))

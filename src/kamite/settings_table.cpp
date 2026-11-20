@@ -45,7 +45,18 @@ namespace kamite::settings
                                           {"4:3", "4:3: HUD where the PS2 had it", "4:3"}};
         constexpr Choice kMenuLayouts[] = {{"4:3", "4:3: as on the PS2, with side bars", "4:3"},
                                            {"stretch", "Stretched to the screen", "STRETCHED"}};
+#if defined(KAMITE_SETTINGS_DOCUMENTATION)
+        constexpr Choice kGraphicsApis[] = {{"vulkan", "Vulkan (KosmicKrisp on Apple Silicon)", "VULKAN"},
+                                            {"dx11", "Direct3D 11 (Windows)", "DX11"}};
+        constexpr const char *kGraphicsApiDescription =
+            "Apple Silicon: bundled KosmicKrisp Vulkan.\nWindows: Vulkan with Direct3D 11 fallback.";
+#elif defined(__APPLE__) && !defined(KAMITE_SETTINGS_WINDOWS)
+        constexpr Choice kGraphicsApis[] = {{"vulkan", "Vulkan (KosmicKrisp)", "VULKAN"}};
+        constexpr const char *kGraphicsApiDescription = "Vulkan through the bundled KosmicKrisp driver.";
+#else
         constexpr Choice kGraphicsApis[] = {{"vulkan", "Vulkan", "VULKAN"}, {"dx11", "Direct3D 11", "DX11"}};
+        constexpr const char *kGraphicsApiDescription = "Default: Vulkan | Fallback: DX11";
+#endif
         constexpr Choice kResolutions[] = {{"1", "1x  native (512x448)", "1X"}, {"2", "2x  1024x896", "2X"},
                                            {"3", "3x  1536x1344", "3X"},        {"4", "4x  2048x1792", "4X"},
                                            {"5", "5x  2560x2240", "5X"},        {"6", "6x  3072x2688", "6X"},
@@ -241,7 +252,7 @@ namespace kamite::settings
                     kVsyncs)),
 
         // ---- Graphics (K, Nov 15: its own tab; claude/graphics-options.md) ---------------------------------------
-        live(onLeave(gameNote(choice(Tab::Graphics, "Renderer", "Graphics API", "Default: Vulkan | Fallback: DX11", "Video",
+        live(onLeave(gameNote(choice(Tab::Graphics, "Renderer", "Graphics API", kGraphicsApiDescription, "Video",
                                      "GraphicsAPI", "vulkan", kGraphicsApis),
                               kOnLeaveNote))),
         live(onLeave(gameNote(choice(Tab::Graphics, "Renderer", "Internal Resolution",

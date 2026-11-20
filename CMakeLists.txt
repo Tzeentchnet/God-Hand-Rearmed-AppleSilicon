@@ -2,7 +2,11 @@ cmake_minimum_required(VERSION 3.21)
 
 # The game (USA, SLUS-21503) native PC port. Adapted from the Urban Reign port's top-level CMakeLists.txt
 # (forks/urban-reign-recomp @2fa53c4); KAMITE_PORT_NOTES.md lists what changed.
-project(Kamite LANGUAGES C CXX)
+if(APPLE)
+    project(Kamite LANGUAGES C CXX OBJC OBJCXX)
+else()
+    project(Kamite LANGUAGES C CXX)
+endif()
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -49,12 +53,12 @@ set(PS2X_ENABLE_SCCACHE OFF CACHE BOOL "" FORCE)
 add_subdirectory(runtime EXCLUDE_FROM_ALL)
 add_subdirectory(src)
 
-# PCSX2's GS (hardware renderer) as pcsx2gs.dll (DX11), loaded at run time when [Video] Renderer=pcsx2 (the default).
+# PCSX2's GS (hardware renderer) as pcsx2gs.dll/libpcsx2gs.dylib, loaded at run time when [Video] Renderer=pcsx2.
 # ON by default: its wrapper carries the game's GameIndex fixes and serial (thirdparty/pcsx2-gs/compat/Bridge.cpp,
 # HostStubs.cpp). The runtime falls back to its own GS when the DLL is missing (gs_pcsx2_backend.cpp,
 # GSPcsx2Backend::Requested), and -DKAMITE_PCSX2_GS=OFF builds without it.
-option(KAMITE_PCSX2_GS "Build PCSX2's GS (pcsx2gs.dll)" ON)
-if(KAMITE_PCSX2_GS AND WIN32)
+option(KAMITE_PCSX2_GS "Build PCSX2's hardware GS renderer" ON)
+if(KAMITE_PCSX2_GS AND (WIN32 OR APPLE))
     if(NOT EXISTS "${CMAKE_SOURCE_DIR}/thirdparty/pcsx2-gs/CMakeLists.txt")
         message(FATAL_ERROR "KAMITE_PCSX2_GS=ON needs thirdparty/pcsx2-gs (copy it from the Urban Reign port)")
     endif()

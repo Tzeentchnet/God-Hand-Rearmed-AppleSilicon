@@ -21,6 +21,7 @@
 #include "fmt/format.h"
 #include "shaderc/shaderc.h"
 
+#include <cstdlib>
 #include <cstring>
 #include <memory>
 
@@ -145,7 +146,8 @@ bool dyn_shaderc::Open()
 	// Use versioned, bundle post-processing adds it..
 	const std::string libname = DynamicLibrary::GetVersionedFilename("shaderc_shared", 1);
 #endif
-	if (!s_library.Open(libname.c_str(), &error))
+	const char* override_path = std::getenv("LIBSHADERC_PATH");
+	if (!s_library.Open((override_path && *override_path) ? override_path : libname.c_str(), &error))
 	{
 		ERROR_LOG("Failed to load shaderc: {}", error.GetDescription());
 		return false;

@@ -13,9 +13,10 @@
 #include <string>
 #include <vector>
 
-#if defined(_WIN32) && __has_include("pcsx2gs_api.h")
+#if (defined(_WIN32) || defined(__APPLE__)) && __has_include("pcsx2gs_api.h")
 #include "pcsx2gs_api.h"
 #define PS2X_HAS_PCSX2_GS 1
+#if defined(_WIN32)
 #ifndef WIN32_LEAN_AND_MEAN
 #define WIN32_LEAN_AND_MEAN
 #endif
@@ -23,6 +24,13 @@
 #define NOMINMAX
 #endif
 #include <Windows.h>
+#define PS2X_PCSX2_CALL __cdecl
+#else
+#include "raylib.h"
+#include <dlfcn.h>
+#include <mach-o/dyld.h>
+#define PS2X_PCSX2_CALL
+#endif
 #endif
 
 #if PS2X_HAS_PCSX2_GS
@@ -31,15 +39,20 @@ static_assert(sizeof(GSVSyncRegs) == sizeof(Pcsx2GsPrivRegs), "GSVSyncRegs must 
 namespace
 {
     const Pcsx2GsApi *g_api = nullptr;
-    void(__cdecl *g_setAspect)(uint32_t) = nullptr; // pcsx2gs_set_aspect, when the DLL has it
-    void(__cdecl *g_setOption)(const char *, const char *) = nullptr; // pcsx2gs_set_option, when the DLL has it
-    void(__cdecl *g_setOverlay)(const float *, const uint32_t *, uint32_t) = nullptr; // pcsx2gs_set_overlay, when the DLL has it
-    void(__cdecl *g_setOverlayText)(const float *, const uint32_t *, const char *, uint32_t) = nullptr; // pcsx2gs_set_overlay_text
-    void(__cdecl *g_setScreen)(const Pcsx2GsScreenItem *, uint32_t, const char *, uint32_t) = nullptr; // pcsx2gs_set_screen
-    int(__cdecl *g_setApi)(const char *, void *, uint32_t, uint32_t) = nullptr; // pcsx2gs_set_api, when the DLL has it
+    void(PS2X_PCSX2_CALL *g_setAspect)(uint32_t) = nullptr; // pcsx2gs_set_aspect, when the library has it
+    void(PS2X_PCSX2_CALL *g_setOption)(const char *, const char *) = nullptr; // pcsx2gs_set_option, when the library has it
+    void(PS2X_PCSX2_CALL *g_setOverlay)(const float *, const uint32_t *, uint32_t) = nullptr; // pcsx2gs_set_overlay
+    void(PS2X_PCSX2_CALL *g_setOverlayText)(const float *, const uint32_t *, const char *, uint32_t) = nullptr;
+    void(PS2X_PCSX2_CALL *g_setScreen)(const Pcsx2GsScreenItem *, uint32_t, const char *, uint32_t) = nullptr;
+    int(PS2X_PCSX2_CALL *g_setApi)(const char *, void *, uint32_t, uint32_t) = nullptr;
     const std::chrono::steady_clock::time_point g_processStart = std::chrono::steady_clock::now();
-    HWND g_parent = nullptr;
-    HWND g_child = nullptr;
+#if defined(_WIN32)
+    using HostWindow = HWND;
+#else
+    using HostWindow = void *;
+#endif
+    HostWindow g_parent = nullptr;
+    HostWindow g_child = nullptr;
     std::atomic<uint64_t> g_presents{0u};
     std::atomic<uint32_t> g_clientWidth{0u};
     std::atomic<float> g_pendingScale{0.0f}; // SetScale: > 0 until the GS thread hands it over
@@ -58,14 +71,25 @@ namespace
     std::atomic<int> g_apiResult{1};
     std::mutex g_apiMutex;
     std::string g_apiWanted; // guarded by g_apiMutex
-    HWND g_newChild = nullptr; // made in Window, handed over by the steps' order (acquire / release)
+    HostWindow g_newChild = nullptr; // made in Window, handed over by the steps' order (acquire / release)
     bool g_hostUiVisible = false; // SetHostUiVisible (main thread)
 
     std::filesystem::path exeDirectory()
     {
+#if defined(_WIN32)
         wchar_t path[MAX_PATH] = {};
         const DWORD length = GetModuleFileNameW(nullptr, path, MAX_PATH);
         return length ? std::filesystem::path(path).parent_path() : std::filesystem::current_path();
+#else
+        uint32_t size = 0;
+        _NSGetExecutablePath(nullptr, &size);
+        std::vector<char> path(size);
+        if (_NSGetExecutablePath(path.data(), &size) != 0)
+            return std::filesystem::current_path();
+        std::error_code ec;
+        const std::filesystem::path canonical = std::filesystem::weakly_canonical(path.data(), ec);
+        return (ec ? std::filesystem::path(path.data()) : canonical).parent_path();
+#endif
     }
 
     std::string utf8(const std::filesystem::path &path)
@@ -80,6 +104,7 @@ namespace
         return (value && *value) ? std::atoi(value) : fallback;
     }
 
+#if defined(_WIN32)
     // The child window only shows the GS output: mouse input goes through to the game window (HTTRANSPARENT works
     // because both belong to the main thread, which also pumps this window's messages).
     LRESULT CALLBACK ChildProc(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam)
@@ -94,6 +119,7 @@ namespace
             return DefWindowProcW(hwnd, msg, wparam, lparam);
         }
     }
+#endif
 
     // PS2X_GIF_DUMP=<start seconds>:<fields>:<file>: the GIF stream sent to PCSX2's GS, from the first vsync after
     // <start seconds> of run time, for <fields> fields. Records (little endian): 'M' u32 size + GS local memory at the
@@ -232,36 +258,95 @@ bool GSPcsx2Backend::Requested()
         std::transform(name.begin(), name.end(), name.begin(), [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
         if (name != "pcsx2")
             return false;
-        const std::filesystem::path dll = exeDirectory() / "pcsx2gs.dll";
-        HMODULE module = LoadLibraryW(dll.c_str());
+
+        const std::filesystem::path dir = exeDirectory();
+#if defined(_WIN32)
+        const std::filesystem::path library = dir / "pcsx2gs.dll";
+        HMODULE module = LoadLibraryW(library.c_str());
         if (!module)
         {
             std::fprintf(stderr, "[gs] PS2X_GS_RENDERER=pcsx2 but %s did not load (error %lu); using the built-in GS\n",
-                         dll.string().c_str(), GetLastError());
+                         library.string().c_str(), GetLastError());
             return false;
         }
-        const auto getApi = reinterpret_cast<Pcsx2GsGetApiFn>(GetProcAddress(module, "pcsx2gs_get_api"));
+        const auto symbol = [module](const char *name)
+        {
+            return reinterpret_cast<void *>(GetProcAddress(module, name));
+        };
+#else
+        const std::filesystem::path kosmickrisp = dir / "kosmickrisp";
+        const std::filesystem::path loader = kosmickrisp / "libvulkan.1.dylib";
+        const std::filesystem::path manifest = kosmickrisp / "icd.d" / "kosmickrisp_icd.json";
+        if (!std::getenv("LIBVULKAN_PATH") || !*std::getenv("LIBVULKAN_PATH"))
+        {
+            if (!std::filesystem::is_regular_file(loader))
+            {
+                std::fprintf(stderr, "[gs] KosmicKrisp loader not found at %s; using the built-in GS\n",
+                             utf8(loader).c_str());
+                return false;
+            }
+            setenv("LIBVULKAN_PATH", utf8(loader).c_str(), 1);
+        }
+        if (!std::getenv("VK_DRIVER_FILES") || !*std::getenv("VK_DRIVER_FILES"))
+        {
+            if (!std::filesystem::is_regular_file(manifest))
+            {
+                std::fprintf(stderr, "[gs] KosmicKrisp ICD manifest not found at %s; using the built-in GS\n",
+                             utf8(manifest).c_str());
+                return false;
+            }
+            setenv("VK_DRIVER_FILES", utf8(manifest).c_str(), 1);
+        }
+        if (!std::getenv("LIBSHADERC_PATH") || !*std::getenv("LIBSHADERC_PATH"))
+        {
+            for (const char *filename : {"libshaderc_shared.1.dylib", "libshaderc_shared.dylib"})
+            {
+                const std::filesystem::path shaderc = dir / filename;
+                if (std::filesystem::is_regular_file(shaderc))
+                {
+                    setenv("LIBSHADERC_PATH", utf8(shaderc).c_str(), 1);
+                    break;
+                }
+            }
+        }
+
+        const std::filesystem::path library = dir / "libpcsx2gs.dylib";
+        void *module = dlopen(library.c_str(), RTLD_NOW | RTLD_LOCAL);
+        if (!module)
+        {
+            std::fprintf(stderr, "[gs] PS2X_GS_RENDERER=pcsx2 but %s did not load (%s); using the built-in GS\n",
+                         utf8(library).c_str(), dlerror());
+            return false;
+        }
+        const auto symbol = [module](const char *name)
+        {
+            return dlsym(module, name);
+        };
+#endif
+        const auto getApi = reinterpret_cast<Pcsx2GsGetApiFn>(symbol("pcsx2gs_get_api"));
         g_api = getApi ? getApi(PCSX2GS_API_VERSION) : nullptr;
-        g_setAspect = reinterpret_cast<void(__cdecl *)(uint32_t)>(GetProcAddress(module, "pcsx2gs_set_aspect"));
-        g_setOption = reinterpret_cast<void(__cdecl *)(const char *, const char *)>(GetProcAddress(module, "pcsx2gs_set_option"));
-        g_setOverlay = reinterpret_cast<void(__cdecl *)(const float *, const uint32_t *, uint32_t)>(GetProcAddress(module, "pcsx2gs_set_overlay"));
-        g_setOverlayText = reinterpret_cast<void(__cdecl *)(const float *, const uint32_t *, const char *, uint32_t)>(
-            GetProcAddress(module, "pcsx2gs_set_overlay_text"));
-        g_setScreen = reinterpret_cast<void(__cdecl *)(const Pcsx2GsScreenItem *, uint32_t, const char *, uint32_t)>(
-            GetProcAddress(module, "pcsx2gs_set_screen"));
-        g_setApi = reinterpret_cast<int(__cdecl *)(const char *, void *, uint32_t, uint32_t)>(GetProcAddress(module, "pcsx2gs_set_api"));
+        g_setAspect = reinterpret_cast<decltype(g_setAspect)>(symbol("pcsx2gs_set_aspect"));
+        g_setOption = reinterpret_cast<decltype(g_setOption)>(symbol("pcsx2gs_set_option"));
+        g_setOverlay = reinterpret_cast<decltype(g_setOverlay)>(symbol("pcsx2gs_set_overlay"));
+        g_setOverlayText = reinterpret_cast<decltype(g_setOverlayText)>(symbol("pcsx2gs_set_overlay_text"));
+        g_setScreen = reinterpret_cast<decltype(g_setScreen)>(symbol("pcsx2gs_set_screen"));
+        g_setApi = reinterpret_cast<decltype(g_setApi)>(symbol("pcsx2gs_set_api"));
         if (!g_api)
         {
-            std::fprintf(stderr, "[gs] pcsx2gs.dll has no matching pcsx2gs_get_api (version %u); using the built-in GS\n",
-                         PCSX2GS_API_VERSION);
+            std::fprintf(stderr, "[gs] %s has no matching pcsx2gs_get_api (version %u); using the built-in GS\n",
+                         utf8(library).c_str(), PCSX2GS_API_VERSION);
             return false;
         }
-        std::fprintf(stderr, "[gs] renderer: PCSX2 GS (pcsx2gs.dll)\n");
+        std::fprintf(stderr, "[gs] renderer: PCSX2 GS (%s)\n", library.filename().string().c_str());
+#if defined(__APPLE__)
+        std::fprintf(stderr, "[gs] Vulkan driver: KosmicKrisp (%s)\n", std::getenv("VK_DRIVER_FILES"));
+#endif
         return true;
     }();
     return requested;
 }
 
+#if defined(_WIN32)
 namespace
 {
     // Main thread: a child window the GS presents into, the size of the parent's client area.
@@ -288,11 +373,13 @@ namespace
         return child;
     }
 }
+#endif
 
 void GSPcsx2Backend::AttachHostWindow(void *parentHwnd)
 {
     if (!Requested() || !parentHwnd || g_child)
         return;
+#if defined(_WIN32)
     g_parent = static_cast<HWND>(parentHwnd);
     // The game window must not paint over its child (GLFW already sets WS_CLIPCHILDREN; made sure here).
     SetWindowLongPtrW(g_parent, GWL_STYLE, GetWindowLongPtrW(g_parent, GWL_STYLE) | WS_CLIPCHILDREN);
@@ -300,6 +387,12 @@ void GSPcsx2Backend::AttachHostWindow(void *parentHwnd)
     g_child = makeChild(width, height);
     if (!g_child)
         return;
+#else
+    g_parent = parentHwnd;
+    g_child = parentHwnd;
+    const uint32_t width = static_cast<uint32_t>(std::max(1, GetRenderWidth()));
+    const uint32_t height = static_cast<uint32_t>(std::max(1, GetRenderHeight()));
+#endif
     g_clientWidth.store(width);
     g_clientHeight.store(height);
 }
@@ -308,6 +401,7 @@ void GSPcsx2Backend::HostTick()
 {
     if (!g_child)
         return;
+#if defined(_WIN32)
     // A graphics API switch: the new window under the old one (the old one keeps showing the picture until the GS
     // presents into the new one), then, once the GS has, the old one goes.
     if (g_apiStep.load(std::memory_order_acquire) == ApiStep::Window)
@@ -349,6 +443,10 @@ void GSPcsx2Backend::HostTick()
     SetWindowPos(g_child, nullptr, 0, 0, static_cast<int>(width), static_cast<int>(height), SWP_NOZORDER | SWP_NOACTIVATE);
     if (g_newChild)
         SetWindowPos(g_newChild, nullptr, 0, 0, static_cast<int>(width), static_cast<int>(height), SWP_NOZORDER | SWP_NOACTIVATE);
+#else
+    const uint32_t width = static_cast<uint32_t>(std::max(1, GetRenderWidth()));
+    const uint32_t height = static_cast<uint32_t>(std::max(1, GetRenderHeight()));
+#endif
     g_clientWidth.store(width, std::memory_order_relaxed);
     g_clientHeight.store(height, std::memory_order_relaxed);
 }
@@ -357,6 +455,14 @@ bool GSPcsx2Backend::SetGraphicsApi(const char *api)
 {
     if (!g_setApi || !g_child || !api || !*api)
         return false;
+#if defined(__APPLE__)
+    std::string name = api;
+    std::transform(name.begin(), name.end(), name.begin(), [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
+    if (name != "vulkan" && name != "vk")
+        return false;
+    g_apiResult.store(2, std::memory_order_relaxed);
+    return true;
+#else
     {
         std::lock_guard<std::mutex> lock(g_apiMutex);
         g_apiWanted = api;
@@ -365,6 +471,7 @@ bool GSPcsx2Backend::SetGraphicsApi(const char *api)
     ApiStep idle = ApiStep::Idle;
     g_apiStep.compare_exchange_strong(idle, ApiStep::Window, std::memory_order_acq_rel);
     return true;
+#endif
 }
 
 bool GSPcsx2Backend::GraphicsApiBusy()
@@ -448,7 +555,9 @@ void GSPcsx2Backend::SetHostUiVisible(bool visible)
     if (!g_child || g_hostUiVisible == visible)
         return;
     g_hostUiVisible = visible;
+#if defined(_WIN32)
     ShowWindow(g_child, visible ? SW_HIDE : SW_SHOWNA);
+#endif
 }
 
 bool GSPcsx2Backend::HostUiVisible()
