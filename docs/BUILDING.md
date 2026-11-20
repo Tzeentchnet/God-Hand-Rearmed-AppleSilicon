@@ -84,6 +84,8 @@ launcher, SDL controller input, and the saloon UI, and uses GLFW controller supp
 the recompiled game, SNR2 modules, saves, keyboard input, HD replacement textures, or audio. The app declares Game Mode
 support; macOS activates it while the game is frontmost and fullscreen and disables it after returning to a window.
 VSync defaults off on Apple Silicon because KosmicKrisp's mailbox presentation can stall the emulation at 30 Hz.
+The software field clock still locks gameplay to the selected 30 or 60 FPS. It smooths up to 2 ms of ordinary timing
+jitter, but a larger hitch re-anchors instead of causing a multi-frame overspeed burst. VSync controls presentation only.
 
 The very first start can sit on a black screen for a couple of minutes while graphics are prepared; later starts take
 seconds.

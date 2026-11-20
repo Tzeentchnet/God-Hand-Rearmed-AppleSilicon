@@ -741,7 +741,7 @@
     {
       "id": "VSync",
       "label": "VSync",
-      "help": "Off: smooth KosmicKrisp presentation on Apple Silicon. On: tear-free presentation on Windows.",
+      "help": "Presentation only; the 30/60 FPS gameplay lock remains. Off: smooth KosmicKrisp on Apple Silicon. On: tear-free Windows.",
       "group": "Game Window",
       "choices": [
         {
@@ -1180,7 +1180,7 @@
     {
       "id": "Fps60",
       "label": "60 FPS",
-      "help": "Play at a smooth sexy silky 60FPS. ON by default; turn OFF for the OG 30 FPS experience.",
+      "help": "Locked 60 FPS gameplay; cutscenes stay at 30. OFF locks gameplay to the OG 30 FPS.",
       "group": "Speed & Feed",
       "choices": [
         {

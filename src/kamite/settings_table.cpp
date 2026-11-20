@@ -249,7 +249,8 @@ namespace kamite::settings
                               kOnLeaveNote))),
         // Help texts: K's (Nov 17).
         live(choice(Tab::Display, "Game Window", "VSync",
-                    "Off: smooth KosmicKrisp presentation on Apple Silicon.\nOn: tear-free presentation on Windows.",
+                    "Presentation only; the 30/60 FPS gameplay lock remains.\n"
+                    "Off: smooth KosmicKrisp on Apple Silicon. On: tear-free Windows.",
                     "Video", "VSync", "0", kVsyncs)),
 
         // ---- Graphics (K, Nov 15: its own tab; claude/graphics-options.md) ---------------------------------------
@@ -308,7 +309,7 @@ namespace kamite::settings
 
         // ---- Gameplay -------------------------------------------------------------------------------------------
         live(toggle(Tab::Gameplay, "Speed & Feed", "60 FPS",
-                    "Play at a smooth sexy silky 60FPS.\nON by default; turn OFF for the OG 30 FPS experience.", "Game",
+                    "Locked 60 FPS gameplay; cutscenes stay at 30.\nOFF locks gameplay to the OG 30 FPS.", "Game",
                     "Fps60", true)),
         // One Control Style per device (K, Nov 16): the one in effect is the device used last.
         // In game one Control Style: the device in use's (K, Nov 16); the launcher lists both.

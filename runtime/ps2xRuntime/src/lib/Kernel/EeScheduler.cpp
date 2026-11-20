@@ -11,16 +11,15 @@
 void ps2xRaiseIntcStat(uint32_t bits) noexcept;
 // Defined in ps2_memory.cpp: number of GS SIGNALs delivered so far.
 uint32_t ps2xGsSignalSerial() noexcept;
-bool ps2xIpuActiveRecently() noexcept; // ps2_memory.cpp
 uint32_t ps2xGsFinishSerial() noexcept;
 const std::atomic<uint32_t> *ps2xGsSignalSerialAddress() noexcept;
 const std::atomic<uint32_t> *ps2xGsFinishSerialAddress() noexcept;
 // host_vsync.cpp: the host display's last vblank and refresh period.
 bool ps2xHostVsync(std::chrono::steady_clock::time_point &lastVblank, std::chrono::nanoseconds &period) noexcept;
 
-// The VSync option (claude/graphics-options.md): OFF lets the image tear, or a variable-refresh display follow the game,
-// so the vblank is not locked to the display then. -1 = not read yet (PS2X_PCSX2_VSYNC=0 is OFF; GHR.ini fills the
-// environment after static initialisation, so it is read at the first lock). The OPTIONS screen sets it live.
+// The VSync option controls display phase alignment, not the software 59.94 Hz field cap. OFF lets the image tear, or a
+// variable-refresh display follow the game. -1 = not read yet (PS2X_PCSX2_VSYNC=0 is OFF; GHR.ini fills the environment
+// after static initialisation, so it is read at the first lock). The OPTIONS screen sets it live.
 static std::atomic<int> g_vsyncLockWanted{-1};
 void ps2xSetVsyncLockWanted(bool on) noexcept
 {
@@ -73,16 +72,12 @@ namespace
         return false;
     }
 
-    // PS2X_VSYNC_LOCK (default on): phase- and frequency-lock the emulated vblank (real-time side only; emulated cycles are
-    // untouched) to the host display, when its refresh is within 2% of the emulated field rate or of a whole multiple of
-    // it (120/180/240 Hz: every 2nd/3rd/4th host vblank, §97). Free-running at 59.94 Hz
-    // against a 60 Hz monitor, the two edges crossed every ~6-8 s: the field came just after a host vsync, the present
-    // missed it (33 ms) and the next image followed 0.6 ms later (PROGRESS §67). Each field the next host deadline is
-    // pulled 1/8 of the way (at most 0.25 ms) toward 7 ms after a host vblank (PS2X_VSYNC_PHASE_MS; 1 ms before §96);
-    // the 0.25 ms step also absorbs the rate difference (60 / 59.94 -> the game runs 0.1% faster). The windowed swap
-    // chain is mailbox (no wait): the compositor takes the latest finished image shortly after each vblank, so a
-    // present 1-3 ms after it raced that pickup (~5 images/s held twice and ~5 never shown); at 6-8 ms each image is
-    // shown exactly once (tools/present_stats.py).
+    // PS2X_VSYNC_LOCK (default on): phase-align the emulated vblank (real-time side only; emulated cycles are untouched)
+    // to the host display when its refresh is within 2% of the emulated field rate or a whole multiple of it
+    // (120/180/240 Hz: every 2nd/3rd/4th host vblank, §97). The caller bounds this correction to the same 2 ms jitter
+    // window as the software limiter: a fixed-rate display may repeat an image instead of triggering a multi-field
+    // catch-up burst. The windowed swap chain is mailbox (no wait), so placing a present away from the compositor's
+    // pickup still improves cadence when the clocks permit it.
     // PS2X_VSYNC_LOCK_STATS=1 logs the phase error every ~5 s.
     // A lock that keeps pulling the same way never finds the display's phase: the display's refresh follows the game's
     // own frames (a variable-refresh display, G-Sync / FreeSync, with VSync on: each present moves the next vblank with
@@ -158,7 +153,7 @@ namespace
                 std::fprintf(stderr, "[vsync-lock] host display %.3f Hz: not a multiple of 59.94 Hz, not locked\n",
                              1e9 / static_cast<double>(periodNs));
             else
-                std::fprintf(stderr, "[vsync-lock] host display %.3f Hz: emulated vblank locked to it, %lld refresh(es) per field (PS2X_VSYNC_LOCK=0 turns this off)\n",
+                std::fprintf(stderr, "[vsync-lock] host display %.3f Hz: emulated vblank phase-aligned, %lld refresh(es) per field (PS2X_VSYNC_LOCK=0 turns this off)\n",
                              1e9 / static_cast<double>(periodNs), static_cast<long long>(multiple));
         }
         if (multiple == 0)
@@ -337,9 +332,9 @@ namespace
     constexpr uint32_t WEF_CLEAR_ALL = 0x20u;
     constexpr auto kVBlankPeriod = std::chrono::microseconds(16667);
     constexpr auto kVBlankDuration = std::chrono::microseconds(500);
+    constexpr auto kVBlankJitterRecovery = std::chrono::milliseconds(2);
     constexpr uint64_t kAlarmTickMicroseconds = 64u;
     constexpr uint32_t kDebugPublishDispatchInterval = 4096u;
-    constexpr int kMaxVBlankCatchUpFields = 2;
     constexpr uint64_t kHostPacingCheckCycles = 65536u;
     // Guest function dispatches so far, and the count at the last host catch-up: a catch-up that is followed by no
     // guest execution means pacing is starving the guest (e.g. a busy IOP eats each skipped field in real time).
@@ -2880,19 +2875,11 @@ void EeScheduler::processDueDeadlines()
             }
             if (scheduled.event.type == EeEventType::VBlankStart)
             {
-                // MTVU timing model: no catch-up beyond 2 ms of jitter. Catching up 2 fields after a late frame fired the
-                // next vblank right after this one; a frame that needs ~18 ms of rendering then got 2 vblanks and the next
-                // got none, so every image stayed 2 refreshes on screen and the next was skipped (~37 distinct images/s
-                // at "60 FPS" in the heaviest map). Late vblanks now re-anchor: the game runs a little below 60 instead,
-                // each image shown once, as in PCSX2.
-                // While the IPU decodes an FMV its commands run inside the EE's register writes (a full-picture CSC
-                // takes ~3 ms) and push vblanks past the 2 ms: the movie ran at ~82% speed. Then late vblanks catch up
-                // as in the synchronous mode (ps2_memory.cpp ps2xIpuActiveRecently, PS2X_IPU_CATCHUP=0 turns it off).
-                const auto catchUp = ps2x::asyncvif::vblankWaitEnabled() && ps2x::asyncvif::active(m_runtime.memory()) &&
-                                             !ps2xIpuActiveRecently()
-                                         ? std::chrono::duration_cast<std::chrono::steady_clock::duration>(std::chrono::milliseconds(2))
-                                         : std::chrono::duration_cast<std::chrono::steady_clock::duration>(kMaxVBlankCatchUpFields * vblankPeriod());
-                const auto hostStart = std::max(scheduled.hostDeadline, std::chrono::steady_clock::now() - catchUp);
+                // Absorb at most 2 ms of ordinary VU/GIF completion and scheduler jitter. The old synchronous/IPU path
+                // could catch up two whole fields after a hitch, briefly running 30/60 FPS logic too fast. Larger delays
+                // now re-anchor here instead: the game slows down rather than issuing a multi-frame overspeed burst.
+                const auto firedAt = std::chrono::steady_clock::now();
+                const auto hostStart = std::max(scheduled.hostDeadline, firedAt - kVBlankJitterRecovery);
                 // PS2X_PACING_STATS=1 (round 10): every 2 s, how late the vblanks fired against their host deadline, the
                 // real time dropped by the re-anchor above (= emulated time lost for good: the SPU2 makes that much less
                 // audio), the EE pacing sleep, the EE thread's CPU use and on which core class it ran (sampled per vblank).
@@ -2901,11 +2888,19 @@ void EeScheduler::processDueDeadlines()
                 {
                     static uint64_t fields = 0u, classSamples[4] = {}, classOther = 0u;
                     static double lateSumMs = 0.0, lateMaxMs = 0.0, droppedMs = 0.0;
+                    static double minIntervalMs = 1e9, maxIntervalMs = 0.0;
+                    static auto previousFiredAt = std::chrono::steady_clock::time_point{};
                     static auto windowStart = std::chrono::steady_clock::now();
                     static const auto epoch = windowStart;
                     static double cpuStartMs = ps2xCurrentThreadCpuMs();
-                    const auto firedAt = std::chrono::steady_clock::now();
                     const double lateMs = std::chrono::duration<double, std::milli>(firedAt - scheduled.hostDeadline).count();
+                    if (previousFiredAt != std::chrono::steady_clock::time_point{})
+                    {
+                        const double intervalMs = std::chrono::duration<double, std::milli>(firedAt - previousFiredAt).count();
+                        minIntervalMs = std::min(minIntervalMs, intervalMs);
+                        maxIntervalMs = std::max(maxIntervalMs, intervalMs);
+                    }
+                    previousFiredAt = firedAt;
                     ++fields;
                     lateSumMs += lateMs;
                     lateMaxMs = std::max(lateMaxMs, lateMs);
@@ -2919,16 +2914,19 @@ void EeScheduler::processDueDeadlines()
                     if (windowMs >= 2000.0)
                     {
                         const double cpuMs = ps2xCurrentThreadCpuMs();
-                        std::fprintf(stderr, "[vblank-stats] t=%.2f fields=%llu late avg %.2f max %.2f ms dropped %.1f ms slept %.0f ms "
+                        std::fprintf(stderr, "[vblank-stats] t=%.2f fields=%llu interval min %.3f max %.3f ms "
+                                             "late avg %.2f max %.2f ms dropped %.1f ms slept %.0f ms "
                                              "eeCpu %.0f%% coreClass0/1/2/3/? %llu/%llu/%llu/%llu/%llu\n",
                                      std::chrono::duration<double>(firedAt - epoch).count(), static_cast<unsigned long long>(fields),
-                                     lateSumMs / static_cast<double>(fields), lateMaxMs, droppedMs, g_vbSleptMs,
+                                     minIntervalMs, maxIntervalMs, lateSumMs / static_cast<double>(fields), lateMaxMs, droppedMs, g_vbSleptMs,
                                      100.0 * (cpuMs - cpuStartMs) / windowMs, static_cast<unsigned long long>(classSamples[0]),
                                      static_cast<unsigned long long>(classSamples[1]), static_cast<unsigned long long>(classSamples[2]),
                                      static_cast<unsigned long long>(classSamples[3]), static_cast<unsigned long long>(classOther));
                         fields = classOther = 0u;
                         classSamples[0] = classSamples[1] = classSamples[2] = classSamples[3] = 0u;
                         lateSumMs = lateMaxMs = droppedMs = g_vbSleptMs = 0.0;
+                        minIntervalMs = 1e9;
+                        maxIntervalMs = 0.0;
                         cpuStartMs = cpuMs;
                         windowStart = firedAt;
                     }
@@ -2948,8 +2946,12 @@ void EeScheduler::processDueDeadlines()
                 scheduleEvent(scheduled.deadlineCycle + kVBlankDurationCycles,
                               hostStart + kVBlankDuration * slow,
                               EeEvent{EeEventType::VBlankEnd, 0, m_vsyncTick + 1u});
+                const auto earliestNext = slow > 1u ? firedAt + vblankPeriod() * slow
+                                                    : firedAt + vblankPeriod() - kVBlankJitterRecovery;
+                const auto requestedNext = slow > 1u ? hostStart + vblankPeriod() * slow
+                                                     : lockToHostVsync(hostStart + vblankPeriod());
                 scheduleEvent(scheduled.deadlineCycle + vblankPeriodCycles(),
-                              slow > 1u ? hostStart + vblankPeriod() * slow : lockToHostVsync(hostStart + vblankPeriod()),
+                              std::max(earliestNext, requestedNext),
                               EeEvent{EeEventType::VBlankStart, 0, 0});
                 m_pacingRefCycle = scheduled.deadlineCycle;
                 m_pacingRefTime = hostStart;

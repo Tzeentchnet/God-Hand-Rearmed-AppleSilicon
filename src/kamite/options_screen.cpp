@@ -85,7 +85,7 @@
 #include <thread>
 #include <vector>
 
-void ps2xSetVsyncLockWanted(bool on) noexcept; // runtime Kernel/EeScheduler.cpp: VSync OFF unlocks the vblank
+void ps2xSetVsyncLockWanted(bool on) noexcept; // runtime Kernel/EeScheduler.cpp: display phase only; the frame cap remains
 
 namespace kamite::options_screen
 {
@@ -925,7 +925,7 @@ namespace kamite::options_screen
             else if (id == "VSync")
             {
                 GSPcsx2Backend::SetOption("vsync", value.c_str());
-                ps2xSetVsyncLockWanted(value != "0"); // OFF: the display follows the game (EeScheduler.cpp)
+                ps2xSetVsyncLockWanted(value != "0"); // OFF: no display phase alignment; the software cap remains
             }
             else if (id == "GraphicsAPI")
             {

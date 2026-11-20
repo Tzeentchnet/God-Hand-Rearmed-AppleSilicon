@@ -1233,9 +1233,6 @@ namespace
         std::memset(maxMs, 0, sizeof(maxMs));
     }
 
-    // Host time of the last decoding command (BDEC/IDEC/CSC/PACK), for ps2xIpuActiveRecently.
-    std::atomic<int64_t> g_ipuLastDecodeNs{0};
-
     void ipuAttach(PS2Memory &memory)
     {
         static bool initialized = false;
@@ -1386,17 +1383,6 @@ namespace
             return;
         memory.completeDmacChannel(kFromIpuChannel, 3u);
     }
-}
-
-// An FMV is being decoded (a decoding command in the last 0.5 s): EeScheduler then lets late vblanks catch up.
-bool ps2xIpuActiveRecently() noexcept
-{
-    static const bool enabled = [] { const char *v = std::getenv("PS2X_IPU_CATCHUP"); return !v || *v != '0'; }();
-    if (!enabled)
-        return false;
-    const int64_t last = g_ipuLastDecodeNs.load(std::memory_order_relaxed);
-    const int64_t now = std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::steady_clock::now().time_since_epoch()).count();
-    return last != 0 && now - last < 500000000LL;
 }
 
 extern "C" void ps2_dmac_ipu_pull(void)
@@ -1966,13 +1952,6 @@ bool PS2Memory::writeIORegister(uint32_t address, uint32_t value)
         ipuAttach(*this);
         ipuTrace("w", address, value);
         const auto started = std::chrono::steady_clock::now();
-        if ((address & 0x3Cu) == 0u)
-        {
-            const uint32_t code = value >> 28;
-            if (code == 1u || code == 2u || code == 7u || code == 8u)
-                g_ipuLastDecodeNs.store(std::chrono::duration_cast<std::chrono::nanoseconds>(started.time_since_epoch()).count(),
-                                        std::memory_order_relaxed);
-        }
         ps2_ipu_write32(address, value);
         if ((address & 0x3Cu) == 0u)
         {

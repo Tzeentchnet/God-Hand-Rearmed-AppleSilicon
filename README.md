@@ -99,6 +99,10 @@ Too many choices? How about just one? Pick a preset and get to playing right awa
 
 > **NOTE:** New installs run at 60 FPS by default. Choose **Classic** for Clover's original 30 FPS gameplay; the other
 > gameplay changes remain opt-in, so no bitchin!
+>
+> Both modes are software-paced and locked. Normal sub-frame timing jitter is smoothed, but a larger hitch is never
+> followed by a multi-frame overspeed burst. VSync changes presentation and tearing only; it does not remove the
+> 30/60 FPS cap.
 
 ### The Presets
 
@@ -225,7 +229,7 @@ Every option, with the same help text you'll see in the launcher and in game.
 - **Display Mode:** Window, max window, or borderless fullscreen. On Apple Silicon, macOS Game Mode activates while the game is frontmost and fullscreen. You can also use F11, if you're into that. *Fullscreen (Borderless) / Maximized Window / Window*
   - **Window Size:** The window's size when it opens (not maximized or fullscreen). *Automatic (follows internal resolution) / PS2 size*
 - **Aspect Ratio:** Screen width from 4:3 to wider than yo momma! *4:3 (the PS2's) / 16:9 / 16:10 / 21:9 / 32:9 / Match the screen* `Remastered+`
-- **VSync:** Off: smooth KosmicKrisp presentation on Apple Silicon. On: tear-free presentation on Windows. *On / Off*
+- **VSync:** Presentation only; the 30/60 FPS gameplay lock remains. Off: smooth KosmicKrisp on Apple Silicon. On: tear-free Windows. *On / Off*
 
 </details>
 <details>
@@ -274,7 +278,7 @@ Every option, with the same help text you'll see in the launcher and in game.
 
 **Speed & Feed**
 
-- **60 FPS:** Play at a smooth sexy silky 60FPS. ON by default; turn OFF for the OG 30 FPS experience. `Remastered+`
+- **60 FPS:** Locked 60 FPS gameplay; cutscenes stay at 30. OFF locks gameplay to the OG 30 FPS. `Remastered+`
 
 **Move & Groove**
 

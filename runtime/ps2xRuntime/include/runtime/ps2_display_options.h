@@ -24,7 +24,7 @@ namespace ps2_host_display
     // applies what changed. On Windows a launcher's borderless window is replaced by a new one instead (its OpenGL
     // frames would hide the GS child window). Main thread.
     void openHostWindow(const char *title);
-    // Real vsync for the window (PS2X_VSYNC, default on); off = the software 60 FPS limiter.
+    // Real vsync for the window (PS2X_VSYNC, default on); off still uses the software 30/60 FPS limiter.
     bool vsyncEnabled();
     // The FPS Counter (the frame rate / game speed line at the bottom left; Options > INTERFACE > Overlays). Any
     // thread. F3 toggles it on the main thread and then calls the listener with the new value (the game layer saves it).
