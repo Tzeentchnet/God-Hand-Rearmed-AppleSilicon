@@ -1,56 +1,63 @@
 ![God Hand: Rearmed](assets/logo.png)
 
-# God Hand: Rearmed (かみて · おもてなし)
+# God Hand: Rearmed — Apple Silicon (かみて · おもてなし)
 
-**God Hand for PS2. Recompiled, Refined, Rearmed.**
+**God Hand for PS2. Recompiled, Refined, Rearmed — natively on Apple Silicon.**
 
-An unofficial, fan-made native PC port of Clover Studio's **God Hand** (PlayStation 2, 2006). The game's own code is
-recompiled into a native Windows or Apple Silicon program: no emulator running the show. It plays start to credits at
-a smooth 60, on any screen, with as much or as little of our own nonsense as you want.
+An unofficial, fan-made Apple Silicon port of Clover Studio's **God Hand** (PlayStation 2, 2006). The game's own code
+is recompiled into a native arm64 program: no emulator running the show. It plays from start to credits with locked
+30 and 60 FPS modes, widescreen support, modern controls, and as much or as little of our own nonsense as you want.
 
 > [!WARNING]
-> **Beta!** Plays from the first punch to the credits, but expect the odd bug. Found one? [Tell us](#found-a-bug).
+> **Apple Silicon Preview!** Plays from the first punch to the credits, but expect the odd bug. Found one?
+> [Tell us](#found-a-bug).
 
 > [!NOTE]
-> This fork adds an experimental native Apple Silicon source build using PCSX2's Vulkan renderer through the bundled
-> KosmicKrisp driver on macOS 26 or newer. See [Building and using God Hand: Rearmed](docs/BUILDING.md#build-it-on-apple-silicon).
+> This fork ships a native Apple Silicon release using PCSX2's graphics renderer through the bundled KosmicKrisp
+> Vulkan-on-Metal driver. It requires macOS 26 or newer. Windows users should use the
+> [upstream project](https://github.com/God-Hand-Rearmed/God-Hand-Rearmed).
 
 > **No game files included!** Play your own damn copy! (USA, SLUS-21503; see [DISC_HASHES.md](DISC_HASHES.md)).
 
 <!-- MEDIA: assets/readme/hero.gif — the hero shot: a fight at 60 FPS, widescreen -->
 
+## Compatibility
+
+| | Requirement |
+| --- | --- |
+| **Mac** | Apple Silicon (`arm64`). Intel Macs are not supported. |
+| **macOS** | macOS 26 or newer. |
+| **Graphics** | Bundled KosmicKrisp Vulkan-on-Metal; no separate Vulkan installation is needed. |
+| **Game** | Your own unmodified USA disc image, serial `SLUS-21503`, as `.iso` or `.chd`. |
+| **Release status** | Experimental preview, ad-hoc signed and not notarized. |
+
 ## Get It Running
 
-### Apple Silicon
-
-1. Grab `GHR-v0.6.9.1-apple-silicon.1-macOS-arm64.zip` from this fork's
-   [Releases](https://github.com/Tzeentchnet/God-Hand-Rearmed-AppleSilicon/releases).
-2. Unzip it somewhere you can write to.
-3. Put your USA God Hand disc image (`.iso`, serial `SLUS-21503`) in the included `game` folder.
-4. Open **GHR.app**. If macOS blocks this ad-hoc-signed preview, right-click it and choose **Open**, or allow it in
-   **System Settings > Privacy & Security**.
-
-This preview requires Apple Silicon and macOS 26 or newer. No game files are included.
-
-### Windows
-
-Use the latest Windows package from the
-[upstream releases](https://github.com/God-Hand-Rearmed/God-Hand-Rearmed/releases), unzip it somewhere writable, run
-**GHR.exe**, and point its launcher at your disc image.
+1. Download
+   [`GHR-v0.6.9.1-apple-silicon.1-macOS-arm64.zip`](https://github.com/Tzeentchnet/God-Hand-Rearmed-AppleSilicon/releases/download/v0.6.9.1-apple-silicon.1/GHR-v0.6.9.1-apple-silicon.1-macOS-arm64.zip)
+   from [Apple Silicon Preview 1](https://github.com/Tzeentchnet/God-Hand-Rearmed-AppleSilicon/releases/tag/v0.6.9.1-apple-silicon.1).
+2. Unzip it somewhere you can write to. Keep **the entire `God Hand Rearmed` folder together**: `GHR.app` needs the
+   `GHR` executable, dylibs, `kosmickrisp/`, and `resources/` beside it. Do not move only the app to Applications.
+3. Put your USA God Hand disc image (`SLUS-21503`, `.iso` or `.chd`) in the included `game/` folder.
+4. Open **GHR.app**.
+5. If macOS blocks it, right-click **GHR.app** and choose **Open**. If it is still blocked, allow it under
+   **System Settings > Privacy & Security**, then open it again.
 
 The first start compiles shaders for your GPU, so the screen may stay black before coming back. Patience, young ass-whooper.
+It also prepares files from your own disc; later starts are much quicker.
 
-When a new version is out, the launcher says so: **What's new** shows the changes, **Update** installs them and
-restarts. Your settings, saves, and mods stay where they are.
+SHA-256 for the preview ZIP:
+`3c710337d444fea808156fbbeac0acb0d65de839a43542ec56c0f0e27839e493`.
+
+This preview launches straight into the game and does not include the Windows saloon launcher or its automatic
+updater. See [How do I update?](#how-do-i-update) before replacing an existing installation.
 
 ## What's In It
 
-<!-- MEDIA: assets/readme/launcher.png — the launcher -->
-
 ### God Hand - Gone Native!
 
-Recompiled as a native Windows or Apple Silicon program; PCSX2 as the renderer until later. Windows supports Vulkan
-or DX11, while Apple Silicon uses Vulkan through KosmicKrisp.
+Recompiled as a native Apple Silicon arm64 program. PCSX2 supplies the graphics renderer, while the bundled
+KosmicKrisp `v26.1.5-ryujinx` driver translates Vulkan to Metal.
 
 ---
 
@@ -137,8 +144,7 @@ which preset first switches a feature on; `Toggle` means none does, it's yours t
 **Display & Graphics**
 - Fullscreen (borderless), maximized or windowed; any aspect ratio from 4:3 to 32:9. On Apple Silicon, macOS Game Mode
   activates while the game is frontmost and fullscreen.
-- Internal resolution up to 8x. Apple Silicon uses bundled KosmicKrisp Vulkan; Windows uses Vulkan by default with
-  Direct3D 11 as the fallback.
+- Internal resolution up to 8x through bundled KosmicKrisp Vulkan. Direct3D 11 is not available on macOS.
 - Texture filtering from the PS2's own smoothing to Dangerously Crunchy, plus trilinear, anisotropic, FXAA,
   brightness and depth of field.
 - HD texture packs in PCSX2's format, with the game's own transparency kept intact. (K recommends this [texture pack](https://gbatemp.net/threads/god-hand-usa-uhd-remaster-definitive-fixed-transparency-glitches.638847), and no, Santins, you didn't fix the transparency issues, but no worries, GHR fixed 'em for you)
@@ -165,9 +171,10 @@ which preset first switches a feature on; `Toggle` means none does, it's yours t
 **Sound**
 - Separate Music, Sound Effects and Voices volumes; Roulette Ratchet clicks as you flick. <!-- tag:RouletteRatchet --> `Remastered+`
 
-**The Launcher**
-- Install and check your disc, every option in one place, presets, Add to Steam (a library entry with art), and
-  updates in place.
+**The Apple Silicon App**
+- `GHR.app` is a small Game Mode-aware wrapper that launches the native `GHR` executable beside it.
+- The current macOS build skips the Windows saloon launcher, Add to Steam, and automatic updater. Configure controls
+  with **F1**, use the in-game options and **F2** menu, and update manually from this fork's Releases page.
 
 **Muscleanious Improvements**
 > The following are default features of GHR you'll have to deal with cause I ain't cluttering the options any more than they already are:
@@ -177,7 +184,7 @@ which preset first switches a feature on; `Toggle` means none does, it's yours t
 
 ## Controls
 
-Defaults for new installs. Everything is rebindable in **Options > Controls** in game and in the launcher.
+Defaults for new installs. Everything is rebindable in game with **F1** or **Options > Controls**.
 
 <!-- BEGIN GENERATED: controls (tools/readme/gen_readme.py) -->
 | Action | Controller | Keyboard & mouse |
@@ -205,7 +212,8 @@ back, Q / E to switch tabs. **F2** opens the developer menu (live camera, poses,
 
 ## Options
 
-Every option, with the same help text you'll see in the launcher and in game.
+Every shared option, with the same help text used in game. Windows-only choices are labelled as such; the Apple
+Silicon build always uses KosmicKrisp Vulkan.
 
 <!-- BEGIN GENERATED: options (tools/readme/gen_readme.py) -->
 <details>
@@ -366,44 +374,63 @@ Every option, with the same help text you'll see in the launcher and in game.
 GHR ships no game assets or disc files. It only runs with a disc image you dumped from your own damn copy.
 
 **Which disc?**
-The USA release (SLUS-21503). Others may work; that's the one it's tested with. [DISC_HASHES.md](DISC_HASHES.md) has
-the checksums.
+Only the unmodified USA release (`SLUS-21503`) is supported; the port checks it and refuses other regions or damaged
+images. `.iso` and `.chd` are accepted. [DISC_HASHES.md](DISC_HASHES.md) has the verified ISO checksums.
 
 **Why is the screen black for a while on the first start?**
 The shaders are being compiled for your GPU. Once. After that it's quick.
 
-**Windows SmartScreen is yelling at me.**
-The exe isn't signed (certificates cost money; this is free). **More info > Run anyway**.
+**macOS says the app is from an unidentified developer.**
+This preview is ad-hoc signed but not Developer ID signed or notarized. Right-click **GHR.app**, choose **Open**, and
+confirm. If needed, allow it under **System Settings > Privacy & Security**, then try again.
+
+**Can I move GHR.app to Applications?**
+Not by itself. `GHR.app` launches the flat `GHR` executable beside the app, which loads the bundled dylibs,
+`kosmickrisp/`, and `resources/`. Move the whole `God Hand Rearmed` folder if you want it somewhere else.
+
+**Where is the fancy launcher?**
+The current Apple Silicon build disables the Windows saloon launcher and starts the game directly. Use **F1** for
+bindings, the in-game Options screens for normal settings, and **F2** for live settings and diagnostics.
 
 **Steam Deck? Linux?**
-Coming. For now it's Windows; Proton may run it, but no promises for now.
+Not supported by this fork. This release is native Apple Silicon only; use the
+[upstream project](https://github.com/God-Hand-Rearmed/God-Hand-Rearmed) for other platform work.
+
+**Windows?**
+Use the [upstream Windows releases](https://github.com/God-Hand-Rearmed/God-Hand-Rearmed/releases). This fork's ZIP
+contains Mach-O arm64 binaries and cannot run on Windows.
 
 **Will my PCSX2 texture pack work?**
-Yes: packs in PCSX2's format (a `replacements` folder). Put it in `textures/SLUS-21503` next to GHR.exe, or point the
-launcher's **Mods > Texture Packs** at it.
+Yes. Put the pack's `replacements/` folder at `textures/SLUS-21503/replacements/` inside the extracted
+`God Hand Rearmed` folder.
 
 **Can I bring my PCSX2 saves?**
-The port keeps its own memory card in `memcards\mc0`.
+The port uses PS2 memory-card images in `memcards/`. Back up the folder before replacing a card.
 
 **Where are my saves?**
-`memcards\mc0` (the game's saves) and `states` (save states), next to GHR.exe. Updates never touch them.
+`memcards/Mcd001.ps2` holds the first memory card, and `states/` holds save states. Both are inside the extracted
+`God Hand Rearmed` folder, beside `GHR`.
 
 **How do I update?**
-Start the launcher. If a new version is out, press **Update**. That's it!
+Updates are manual in this preview. Unzip the new release into a new folder, then move your `game/`, `memcards/`,
+`states/`, `mods/`, `textures/`, `GHR.ini`, and `controls.ini` from the old folder. Do not replace the old installation
+folder wholesale in Finder: it contains your disc image and saves.
 
 **I want it at 30 FPS!**
 Switch off **60 FPS** in Options > Gameplay, or pick the **Classic** preset.
 
 ## Found a Bug?
 
-Open an [issue](https://github.com/Tzeentchnet/God-Hand-Rearmed-AppleSilicon/issues/new/choose) with your version (bottom
-right of the launcher), what happened and `logs\kamite.log`. If something feels off at 60 FPS (too fast, too slow,
-an enemy acting weird), the template explains how to record a **test case** of it: one file that shows us exactly what
-you saw.
+Open an [issue](https://github.com/Tzeentchnet/God-Hand-Rearmed-AppleSilicon/issues/new/choose) with the release tag,
+what happened and `logs/kamite.log` from the extracted game folder. If something feels off at 60 FPS (too fast, too
+slow, an enemy acting weird), the template explains how to record a **test case** of it: one file that shows us exactly
+what you saw.
 
-## Coming Soon
+## Not Yet in the Apple Silicon Preview
 
-- **Linux / Steam Deck, Android and Mac.**
+- **Developer ID signing and notarization.**
+- **The saloon launcher, Add to Steam, and automatic updater.**
+- **Linux / Steam Deck and Android builds.**
 - **Photo mode** with a free camera.
 - **Subtitles** for the cutscenes.
 - **More playable characters.**
@@ -413,10 +440,12 @@ Building it yourself, or curious how it works? See [docs/BUILDING.md](docs/BUILD
 
 ## Credits
 
-God Hand: Rearmed is directed, play-tested and written by K, built with AI assistance (Claude by Anthropic), with ideas
-and testing from the boys.
+This Apple Silicon fork is maintained by [Tzeentchnet](https://github.com/Tzeentchnet). God Hand: Rearmed is directed,
+play-tested and written by K, built with AI assistance (Claude by Anthropic), with ideas and testing from the boys.
 
 **Built on**
+- [KosmicKrisp](https://github.com/Kenji-NX/KosmicKrisp): the bundled Vulkan-on-Metal driver and Vulkan loader, pinned
+  to `v26.1.5-ryujinx` for compatible, smooth Apple Silicon presentation.
 - [LasVola/godhand-recomp](https://github.com/LasVola/godhand-recomp): the recompilation God Hand: Rearmed started from
   (the running game, the SNR2 overlay loader, the first fixes), built on [PS2Recomp](https://github.com/ran-j/PS2Recomp)
   by ran-j and contributors, the [sotc-port runtime fork](https://github.com/LightVelox/PS2Recomp) by LightVelox, and
