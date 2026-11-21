@@ -29,7 +29,8 @@ namespace kamite::launcher::update
     {
         namespace fs = std::filesystem;
 
-        constexpr const char *kReleasesApi = "https://api.github.com/repos/God-Hand-Rearmed/God-Hand-Rearmed/releases?per_page=30";
+        constexpr const char *kReleasesApi =
+            "https://api.github.com/repos/Tzeentchnet/God-Hand-Rearmed-AppleSilicon/releases?per_page=30";
         constexpr const char *kCleanupList = "update-cleanup.txt"; // the files renamed aside, removed at the next start
         constexpr const char *kNewSuffix = ".update-new";
         constexpr const char *kOldSuffix = ".update-old";
@@ -199,7 +200,8 @@ namespace kamite::launcher::update
         // tools/win/Publish-Tester.ps1 replaces after each of K's builds of main, named
         // GHR-tester-<commit>-<commit time, Unix seconds>.zip. A build of a newer commit than ours is offered. Players'
         // checks skip that release (its tag is not a version).
-        constexpr const char *kTesterApi = "https://api.github.com/repos/God-Hand-Rearmed/God-Hand-Rearmed/releases/tags/tester-build";
+        constexpr const char *kTesterApi =
+            "https://api.github.com/repos/Tzeentchnet/God-Hand-Rearmed-AppleSilicon/releases/tags/tester-build";
         std::atomic<bool> g_testerChannel{false};
 
         // "ghr-tester-1a2b3c4-1795100000.zip" (lower case) -> commit, time.

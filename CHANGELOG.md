@@ -4,6 +4,10 @@ Newest first, one line per change; the code comments say how.
 
 ## November 20, 2026
 
+- Apple Silicon preview: native arm64 builds on macOS 26 or newer, with KosmicKrisp Vulkan-on-Metal.
+- Apple Silicon preview: fullscreen activates macOS Game Mode; windowed and background play release it.
+- Apple Silicon preview: the default 3x profile holds the locked 60 FPS mode with VSync off; Classic remains locked 30.
+- Apple Silicon preview: logical-size presentation avoids Retina overdraw and keeps in-game menu mouse coordinates aligned.
 - Mods: a mod can replace one entry of the game's sound archives (a music track in bgm\bgm00.afs, a cutscene's audio in se\ev, a room's sounds in se) by its name or number, as ADX, WAV, OGG or MP3: GHR converts it once and keeps the copy; loop tags (LOOPSTART / LOOPLENGTH) set the loop, else the track loops as the game's did.
 - Faster game logic: floating-point maths runs on your CPU's own units with the PS2's rounding, limits and divide-by-zero results, in the game's vector maths too.
 - Widescreen: Blackjack's Win / Lose and the slots' pay table no longer turn the picture 4:3 (and keep it so until you leave the game).

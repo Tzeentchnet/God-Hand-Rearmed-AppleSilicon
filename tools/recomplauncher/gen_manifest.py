@@ -138,7 +138,7 @@ def manifest(data):
         "$schema": "https://recomplauncher.com/schema/recomplauncher.json",
         "format": 1,
         "name": "God Hand: Rearmed",
-        "repo": "God-Hand-Rearmed/God-Hand-Rearmed",
+        "repo": "Tzeentchnet/God-Hand-Rearmed-AppleSilicon",
         "game": {
             "kind": "iso",
             "label": "Your disc image (.iso) of God Hand for PlayStation 2, the USA release (serial SLUS-21503).",

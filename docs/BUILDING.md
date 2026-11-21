@@ -193,6 +193,10 @@ options were on (60 FPS, aspect ratio, character).
   disc, so none ship. The maintainer's builder packs it and publishes it as a GitHub release named after the tag (a full
   release, not a pre-release: RecompLauncher installs only full releases), with the CHANGELOG lines since the last
   release as its notes and the zip as its one asset (the updater installs the newest release's `.zip`).
+- **Apple Silicon preview zip:** `GHR-v<version>-macOS-arm64.zip`, with the native `GHR`, `GHR.app`, dylibs,
+  `kosmickrisp/`, `resources/`, an empty `game/` folder, `recomplauncher.json`, `README.txt`, `LICENSE` and
+  `docs/licenses/`. It follows the same exclusions above and is published as a pre-release while macOS support remains
+  experimental.
 - **RecompLauncher:** `recomplauncher.json` (top level, copied next to GHR.exe by the build) is generated from the
   settings table and the presets: after changing either, run `python -I tools/recomplauncher/gen_manifest.py`
   (`--check` says when it's stale). Its setup step is `GHR.exe --prepare --iso <image>` (no window); started by

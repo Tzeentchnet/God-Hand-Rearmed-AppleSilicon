@@ -21,14 +21,22 @@ a smooth 60, on any screen, with as much or as little of our own nonsense as you
 
 ## Get It Running
 
-1. Grab the latest `GHR-v….zip` from [Releases](https://github.com/God-Hand-Rearmed/God-Hand-Rearmed/releases).
-2. Unzip it somewhere you can write to, **Not Program Files**!
-    * The launcher updates the game in place and Windows won't let it write there.
-3. Run **GHR.exe**. 
-    * Windows SmartScreen may complain about an unknown publisher: **More info > Run anyway**.
-4. Point the launcher at your disc image (.iso or .chd) once, and it checks it for you.
-5. Pick a preset and hit "**Play**"! 
-    * Beat thugs™, demons™, women™!
+### Apple Silicon
+
+1. Grab `GHR-v0.6.9.1-apple-silicon.1-macOS-arm64.zip` from this fork's
+   [Releases](https://github.com/Tzeentchnet/God-Hand-Rearmed-AppleSilicon/releases).
+2. Unzip it somewhere you can write to.
+3. Put your USA God Hand disc image (`.iso`, serial `SLUS-21503`) in the included `game` folder.
+4. Open **GHR.app**. If macOS blocks this ad-hoc-signed preview, right-click it and choose **Open**, or allow it in
+   **System Settings > Privacy & Security**.
+
+This preview requires Apple Silicon and macOS 26 or newer. No game files are included.
+
+### Windows
+
+Use the latest Windows package from the
+[upstream releases](https://github.com/God-Hand-Rearmed/God-Hand-Rearmed/releases), unzip it somewhere writable, run
+**GHR.exe**, and point its launcher at your disc image.
 
 The first start compiles shaders for your GPU, so the screen may stay black before coming back. Patience, young ass-whooper.
 
@@ -388,7 +396,7 @@ Switch off **60 FPS** in Options > Gameplay, or pick the **Classic** preset.
 
 ## Found a Bug?
 
-Open an [issue](https://github.com/God-Hand-Rearmed/God-Hand-Rearmed/issues/new/choose) with your version (bottom
+Open an [issue](https://github.com/Tzeentchnet/God-Hand-Rearmed-AppleSilicon/issues/new/choose) with your version (bottom
 right of the launcher), what happened and `logs\kamite.log`. If something feels off at 60 FPS (too fast, too slow,
 an enemy acting weird), the template explains how to record a **test case** of it: one file that shows us exactly what
 you saw.
